@@ -1,0 +1,4 @@
+adb-shell[async]==0.4.4
+zeroconf==0.148.0
+androidtvremote2==0.3.1
+Flask==3.1.3

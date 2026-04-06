@@ -37,7 +37,7 @@ cd tv-remote
 
 # Create virtualenv and install dependencies
 python3 -m venv .venv
-.venv/bin/pip install adb-shell[async] zeroconf androidtvremote2 flask
+.venv/bin/pip install -r requirements.txt
 
 # Run the setup wizard
 ./install
@@ -141,6 +141,10 @@ tv-remote/
 - `config.json` is in `.gitignore` — it contains your TV's IP and MAC address and is never committed.
 
 ---
+
+## Security model
+
+The Flask server binds to `127.0.0.1` (localhost only) and is not reachable from other machines on the network. All ADB communication stays on your local LAN. No credentials, tokens, or personal data are stored in the repository — `config.json` (TV IP and MAC) is gitignored and written locally by `./install`.
 
 ## License
 
