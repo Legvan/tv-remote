@@ -125,7 +125,16 @@ PORT = 5052
 
 
 if __name__ == '__main__':
+    import socket as _socket
+    try:
+        _s = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
+        _s.connect(('8.8.8.8', 80))
+        _lan_ip = _s.getsockname()[0]
+        _s.close()
+    except Exception:
+        _lan_ip = 'localhost'
     print(f'TV Remote GUI → http://localhost:{PORT}')
+    print(f'On your phone  → http://{_lan_ip}:{PORT}')
     with _lock:
         try:
             get_tv()
@@ -138,4 +147,4 @@ if __name__ == '__main__':
         daemon=True
     ).start()
 
-    app.run(host='127.0.0.1', port=PORT, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)

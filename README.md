@@ -144,7 +144,7 @@ tv-remote/
 
 ## Security model
 
-The Flask server binds to `127.0.0.1` (localhost only) and is not reachable from other machines on the network. All ADB communication stays on your local LAN. No credentials, tokens, or personal data are stored in the repository — `config.json` (TV IP and MAC) is gitignored and written locally by `./install`.
+The Flask server binds to `0.0.0.0` and is reachable by any device on your local network — intended so you can use it from a phone or tablet. It should not be exposed to the internet (use your router/firewall to keep it LAN-only). All ADB communication stays on your local LAN. No credentials, tokens, or personal data are stored in the repository — `config.json` (TV IP and MAC) is gitignored and written locally by `./install`.
 
 ## License
 
