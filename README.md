@@ -4,8 +4,6 @@ A web-based remote control for **Android TV / Google TV** devices, controlled ov
 
 Works with any Google TV or Android TV device — TCL, Sony, Philips, Hisense, Nvidia Shield, Chromecast with Google TV, and more.
 
-![Remote screenshot](docs/screenshot.png)
-
 ---
 
 ## Features
