@@ -1,0 +1,28 @@
+# User configuration — contains your TV's IP, MAC, and model (written by ./install)
+config.json
+
+# Claude Code development notes (project-internal)
+CLAUDE.md
+
+# Python virtualenv
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# ADB keys — stored in ~/.android/, not in project, but exclude if accidentally copied here
+*.pem
+adbkey
+adbkey.pub
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Logs
+*.log

@@ -1,0 +1,4 @@
+#!/bin/bash
+# Convenience wrapper — run from anywhere
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$DIR/.venv/bin/python" "$DIR/scripts/tv.py" "$@"

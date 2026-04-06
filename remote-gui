@@ -1,0 +1,14 @@
+#!/bin/bash
+# Launch the Google TV Remote GUI
+# Kills any previous instance on port 5052, then starts fresh.
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Kill any process already holding port 5052
+OLD=$(ss -tlnp | grep ':5052' | grep -oP 'pid=\K[0-9]+')
+if [ -n "$OLD" ]; then
+    echo "Stopping previous instance (PID $OLD)..."
+    kill "$OLD" 2>/dev/null
+    sleep 1
+fi
+
+exec "$DIR/.venv/bin/python" "$DIR/scripts/remote_server.py"
