@@ -11,7 +11,7 @@ Works with any Google TV or Android TV device — TCL, Sony, Philips, Hisense, N
 ## Features
 
 - **Auto-discovery** — scans your LAN via mDNS and ADB port scan, identifies model from TLS certificate (no pairing required)
-- **Web remote** — phone- and desktop-friendly UI served locally at `http://localhost:5052`
+- **Web remote** — phone- and desktop-friendly UI accessible at `http://localhost:5052` on your machine or `http://<machine-ip>:5052` from any device on your LAN
 - **Full controls** — D-pad, volume, media, app shortcuts (YouTube, Netflix, Prime, Disney+, Spotify)
 - **Google Assistant** — launches via `am start` (most reliable method on Google TV)
 - **Text input** — type search queries or passwords from your keyboard; modal opens with `T`
