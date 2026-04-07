@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — TV Remote</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 720px;
+      margin: 60px auto;
+      padding: 0 24px;
+      color: #1a1a1a;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    h2 { font-size: 1.1rem; margin-top: 36px; color: #333; }
+    p, li { font-size: 0.97rem; }
+    .meta { color: #777; font-size: 0.88rem; margin-bottom: 40px; }
+    ul { padding-left: 20px; }
+  </style>
+</head>
+<body>
+
+<h1>Privacy Policy</h1>
+<p class="meta">App: <strong>TV Remote</strong> &nbsp;|&nbsp; Developer: Leszek Pokorski &nbsp;|&nbsp; Last updated: April 2026</p>
+
+<h2>Overview</h2>
+<p>TV Remote is a local-network tool that lets any browser on your home network control an Android TV. This policy explains what data the app does and does not collect.</p>
+
+<h2>Data Collection</h2>
+<p><strong>We collect no personal data.</strong> The app does not collect, store, transmit, or share any personal information, usage statistics, analytics, or identifiers.</p>
+
+<h2>Network Communication</h2>
+<ul>
+  <li>The app runs an HTTP server on port 8080 that is accessible only to devices on the same local network (LAN). It is not reachable from the internet.</li>
+  <li>The app connects to the device's own ADB daemon at <code>127.0.0.1:5555</code> (loopback) to inject remote control commands. This connection never leaves the device.</li>
+  <li>No data is sent to any external server, cloud service, or third party.</li>
+</ul>
+
+<h2>Local Storage</h2>
+<p>The app generates an RSA key pair the first time it runs. This key pair is stored in the app's private internal storage and is used solely to authenticate the loopback ADB connection. It is never transmitted off the device.</p>
+
+<h2>Permissions</h2>
+<ul>
+  <li><strong>INTERNET</strong> — required to bind the local HTTP server socket and the loopback ADB socket.</li>
+  <li><strong>ACCESS_NETWORK_STATE / ACCESS_WIFI_STATE</strong> — used to read the device's local IP address for display in the UI.</li>
+  <li><strong>WAKE_LOCK</strong> — keeps the CPU active while the server is running so commands are not dropped.</li>
+  <li><strong>FOREGROUND_SERVICE / FOREGROUND_SERVICE_CONNECTED_DEVICE</strong> — required to run the persistent server as a foreground service with a visible notification.</li>
+  <li><strong>RECEIVE_BOOT_COMPLETED</strong> — allows the server to auto-start after a device reboot.</li>
+</ul>
+
+<h2>Third-Party Services</h2>
+<p>The app uses no third-party SDKs, analytics libraries, advertising frameworks, or crash-reporting services.</p>
+
+<h2>ADB Requirement</h2>
+<p>The app requires the user to explicitly enable <em>USB Debugging / ADB over network</em> in the device's Developer Options. This is a deliberate, non-default setting. The app only interacts with the device's own ADB daemon and does not connect to any external ADB host.</p>
+
+<h2>Children's Privacy</h2>
+<p>The app does not collect any data from any user, including children. It is not directed at children.</p>
+
+<h2>Changes to This Policy</h2>
+<p>If the app's data practices change, this page will be updated with a new date. Given the app's local-only design, no material changes are anticipated.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy: <a href="mailto:leszek@legvan.pl">leszek@legvan.pl</a></p>
+
+</body>
+</html>
