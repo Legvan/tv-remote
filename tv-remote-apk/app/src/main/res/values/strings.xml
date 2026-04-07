@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TV Remote</string>
+    <string name="notif_channel_name">TV Remote Server</string>
+    <string name="notif_channel_desc">Background HTTP server for the web-based remote control</string>
+    <string name="notif_title">TV Remote Server</string>
+    <string name="status_starting">Starting…</string>
+    <string name="status_running">Running</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="btn_start">Start Server</string>
+    <string name="btn_stop">Stop Server</string>
+    <string name="adb_connected">ADB connected</string>
+    <string name="adb_disconnected">ADB not connected</string>
+    <string name="adb_hint">Enable Developer Options → USB Debugging on first run</string>
+</resources>

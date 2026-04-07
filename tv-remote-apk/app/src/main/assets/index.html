@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Google TV Remote</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #1c2340 0%, #0a0a0c 60%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 28px 16px 40px;
+  font-family: -apple-system, 'Google Sans', Roboto, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.headline {
+  color: rgba(255,255,255,0.22);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.headline::before, .headline::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  max-width: 40px;
+}
+
+/* ─── Remote body ─── */
+.remote {
+  width: 305px;
+  background: linear-gradient(175deg, #2a2a2e 0%, #1c1c1e 55%, #161618 100%);
+  border-radius: 44px;
+  padding: 22px 22px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.075),
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 -1px 0 rgba(0,0,0,0.4) inset,
+    0 30px 90px rgba(0,0,0,0.85),
+    0 8px 24px rgba(0,0,0,0.5);
+  user-select: none;
+}
+
+/* ─── Status bar ─── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.05);
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1;
+}
+.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #34c759;
+  flex-shrink: 0;
+  box-shadow: 0 0 5px #34c759;
+  transition: background 0.4s, box-shadow 0.4s;
+}
+.status-bar.offline .dot { background: #ff453a; box-shadow: 0 0 5px #ff453a; }
+#status-app { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#status-screen {
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+  font-weight: 500;
+}
+/* ADB loopback indicator (on-device APK only) */
+#adb-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #444;
+  flex-shrink: 0;
+  transition: background 0.4s;
+}
+#adb-dot.ok { background: #34c759; }
+#adb-dot.err { background: #ff453a; }
+
+/* ─── Base button reset ─── */
+button {
+  border: none;
+  cursor: pointer;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.13s ease, transform 0.1s ease, box-shadow 0.13s ease;
+  position: relative;
+  overflow: hidden;
+}
+button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.15s;
+  border-radius: inherit;
+}
+button:active::after { opacity: 0.06; }
+button:active { transform: scale(0.91) !important; }
+
+/* ─── Top row: Input · Settings · Power ─── */
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+.ibtn {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.68);
+  font-size: 18px;
+}
+.ibtn:hover { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.95); }
+
+.power-btn { color: #ff6b6b; font-size: 20px; }
+.power-btn:hover { background: rgba(255,69,58,0.18); color: #ff453a; }
+
+/* ─── Assistant pill ─── */
+.assistant {
+  width: 100%;
+  height: 48px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #1967d2 0%, #4285f4 100%);
+  color: white;
+  font-size: 13.5px;
+  font-weight: 500;
+  gap: 9px;
+  box-shadow: 0 4px 16px rgba(66,133,244,0.32), 0 1px 0 rgba(255,255,255,0.15) inset;
+}
+.assistant:hover {
+  background: linear-gradient(135deg, #1e78e6 0%, #5a95f5 100%);
+  box-shadow: 0 4px 22px rgba(66,133,244,0.48), 0 1px 0 rgba(255,255,255,0.15) inset;
+  transform: translateY(-1px);
+}
+.assistant:active { transform: scale(0.97) translateY(0) !important; }
+.mic { font-size: 18px; }
+
+/* ─── D-pad ring ─── */
+.dpad-wrap { display: flex; justify-content: center; }
+
+.dpad {
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, #2c2c30 0%, #1a1a1e 100%);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  padding: 12px;
+  gap: 4px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 8px 28px rgba(0,0,0,0.65),
+    inset 0 2px 4px rgba(255,255,255,0.03),
+    inset 0 -2px 4px rgba(0,0,0,0.3);
+}
+
+.dpad button {
+  background: transparent;
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
+  border-radius: 8px;
+}
+.dpad button:hover { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.92); }
+
+.d-up    { grid-column: 2; grid-row: 1; border-radius: 50% 50% 8px 8px !important; }
+.d-left  { grid-column: 1; grid-row: 2; border-radius: 50% 8px 8px 50% !important; }
+.d-ok    {
+  grid-column: 2; grid-row: 2;
+  border-radius: 50% !important;
+  background: #2e2e34 !important;
+  color: rgba(255,255,255,0.88) !important;
+  font-size: 12.5px !important;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow:
+    0 3px 8px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+}
+.d-ok:hover { background: #3d3d44 !important; }
+.d-right { grid-column: 3; grid-row: 2; border-radius: 8px 50% 50% 8px !important; }
+.d-down  { grid-column: 2; grid-row: 3; border-radius: 8px 8px 50% 50% !important; }
+
+/* ─── Nav row: Back · Home · Recents ─── */
+.nav-row {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+}
+.nav-btn {
+  width: 72px; height: 50px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.65);
+  flex-direction: column;
+  gap: 3px;
+  font-size: 20px;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.9); }
+.nav-lbl {
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+}
+
+/* ─── Divider ─── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 20%, rgba(255,255,255,0.08) 80%, transparent);
+  margin: 0 6px;
+}
+
+/* ─── Volume ─── */
+.vol-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.vol-pill {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.07);
+  border-radius: 28px;
+  padding: 4px;
+  gap: 0;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.vbtn {
+  width: 54px; height: 48px;
+  border-radius: 24px;
+  background: transparent;
+  color: rgba(255,255,255,0.65);
+  font-size: 20px;
+}
+.vbtn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.95); }
+.vbtn:first-child { border-radius: 24px 12px 12px 24px; }
+.vbtn:last-child  { border-radius: 12px 24px 24px 12px; }
+
+.mute-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.55);
+  font-size: 18px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.mute-btn:hover { background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.9); }
+
+/* ─── Media controls ─── */
+.media-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.media-btn {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.65);
+  font-size: 19px;
+}
+.media-btn:hover { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.95); }
+.media-btn.playpause {
+  width: 62px; height: 62px;
+  font-size: 24px;
+  background: rgba(255,255,255,0.12);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+.media-btn.playpause:hover { background: rgba(255,255,255,0.2); }
+
+/* ─── App shortcuts ─── */
+.apps-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.app-btn {
+  height: 38px;
+  border-radius: 10px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: 0.2px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  flex-direction: column;
+  gap: 1px;
+}
+.app-btn:hover { filter: brightness(1.18); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+.app-btn:active { transform: scale(0.91) translateY(0) !important; }
+
+.ap-yt { background: linear-gradient(145deg, #cc0000, #ff0000); }
+.ap-nf { background: linear-gradient(145deg, #b00710, #e50914); }
+.ap-pv { background: linear-gradient(145deg, #0073a8, #00a8e0); font-size: 8px; letter-spacing: -0.1px; }
+.ap-dp { background: linear-gradient(145deg, #0e2a8a, #1434cb); }
+
+/* ─── Text modal ─── */
+.text-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.text-modal.open { display: flex; }
+
+.text-card {
+  width: 320px;
+  background: linear-gradient(175deg, #2a2a2e 0%, #1c1c1e 100%);
+  border-radius: 22px;
+  padding: 22px 20px 20px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 24px 60px rgba(0,0,0,0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.text-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  text-align: center;
+}
+
+.text-input {
+  width: 100%;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 13px 15px;
+  color: rgba(255,255,255,0.92);
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+  caret-color: #4285f4;
+}
+.text-input:focus { border-color: rgba(66,133,244,0.6); }
+.text-input::placeholder { color: rgba(255,255,255,0.2); }
+
+.text-actions {
+  display: flex;
+  gap: 10px;
+}
+.text-cancel {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 500;
+}
+.text-cancel:hover { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.85); }
+.text-send {
+  flex: 2;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1967d2, #4285f4);
+  color: white;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 600;
+  box-shadow: 0 3px 12px rgba(66,133,244,0.3);
+}
+.text-send:hover {
+  background: linear-gradient(135deg, #1e78e6, #5a95f5);
+  box-shadow: 0 4px 18px rgba(66,133,244,0.45);
+}
+.text-hint {
+  font-size: 10px;
+  color: rgba(255,255,255,0.15);
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+/* ─── Toast ─── */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: rgba(44,44,48,0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: rgba(255,255,255,0.9);
+  padding: 9px 20px;
+  border-radius: 22px;
+  font-size: 13px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.err  { background: rgba(180,30,24,0.95); border-color: rgba(255,100,90,0.2); }
+
+/* ─── Keyboard hint ─── */
+.kbd-hint {
+  margin-top: 14px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.18);
+  letter-spacing: 0.4px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="headline" id="headline">TV Remote</div>
+
+<div class="remote">
+
+  <!-- Status bar -->
+  <div class="status-bar" id="status-bar">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-app">Connecting…</span>
+    <span id="status-screen"></span>
+    <!-- ADB loopback dot: only meaningful when served by the on-device APK -->
+    <div id="adb-dot" title="ADB loopback"></div>
+  </div>
+
+  <!-- Top row: Input / Settings / Text / Power -->
+  <div class="top-row">
+    <button class="ibtn" title="Input / Source" onclick="key(178)">⊞</button>
+    <button class="ibtn" title="Settings"       onclick="key(176)">⚙</button>
+    <button class="ibtn" title="Type text (T)"  onclick="openTextModal()" style="font-size:16px">⌨</button>
+    <button class="ibtn power-btn" title="Power (toggle)" onclick="key(26)">⏻</button>
+  </div>
+
+  <!-- Google Assistant / Search -->
+  <button class="assistant" title="Google Assistant" onclick="assistant()">
+    <span class="mic">🎙</span>
+    <span>Google Assistant</span>
+  </button>
+
+  <!-- D-pad navigation ring -->
+  <div class="dpad-wrap">
+    <div class="dpad">
+      <button class="d-up"    onclick="key(19)" title="Up">▲</button>
+      <button class="d-left"  onclick="key(21)" title="Left">◀</button>
+      <button class="d-ok"    onclick="key(23)" title="OK / Select">OK</button>
+      <button class="d-right" onclick="key(22)" title="Right">▶</button>
+      <button class="d-down"  onclick="key(20)" title="Down">▼</button>
+    </div>
+  </div>
+
+  <!-- Back · Home · Recents -->
+  <div class="nav-row">
+    <button class="nav-btn" onclick="key(4)"   title="Back">
+      <span>↩</span>
+      <span class="nav-lbl">Back</span>
+    </button>
+    <button class="nav-btn" onclick="key(3)"   title="Home">
+      <span>⌂</span>
+      <span class="nav-lbl">Home</span>
+    </button>
+    <button class="nav-btn" onclick="key(187)" title="Recent Apps">
+      <span>⊡</span>
+      <span class="nav-lbl">Apps</span>
+    </button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Volume -->
+  <div class="vol-row">
+    <div class="vol-pill">
+      <button class="vbtn" title="Volume Down" onclick="key(25)">🔉</button>
+      <button class="vbtn" title="Volume Up"   onclick="key(24)">🔊</button>
+    </div>
+    <button class="mute-btn" title="Mute / Unmute" onclick="key(164)">🔇</button>
+  </div>
+
+  <!-- Rewind · Play/Pause · Fast Forward -->
+  <div class="media-row">
+    <button class="media-btn"          title="Rewind"        onclick="key(89)">⏪</button>
+    <button class="media-btn playpause" title="Play / Pause"  onclick="key(85)">⏯</button>
+    <button class="media-btn"          title="Fast Forward"   onclick="key(90)">⏩</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- App shortcuts -->
+  <div class="apps-row">
+    <button class="app-btn ap-yt" title="YouTube"     onclick="launch('youtube')">▶<br>YouTube</button>
+    <button class="app-btn ap-nf" title="Netflix"     onclick="launch('netflix')">N<br>Netflix</button>
+    <button class="app-btn ap-pv" title="Prime Video" onclick="launch('prime')">prime<br>video</button>
+    <button class="app-btn ap-dp" title="Disney+"     onclick="launch('disney')">✦<br>Disney+</button>
+  </div>
+
+</div>
+
+<div class="kbd-hint">
+  Arrow keys · Enter=OK · Esc=Back · H=Home · Space=Play/Pause · M=Mute · PgUp/Dn=Volume · T=Text
+</div>
+
+<!-- Text input modal -->
+<div class="text-modal" id="text-modal" onclick="onModalBgClick(event)">
+  <div class="text-card">
+    <div class="text-card-title">⌨ Type Text</div>
+    <input
+      class="text-input"
+      id="text-input"
+      type="text"
+      placeholder="Focus a field on TV first, then type here…"
+      autocomplete="off"
+      spellcheck="false"
+    >
+    <div class="text-actions">
+      <button class="text-cancel" onclick="closeTextModal()">Cancel</button>
+      <button class="text-send"   onclick="submitText()">Send to TV ↵</button>
+    </div>
+    <div class="text-hint">Enter to send · Escape to cancel · ASCII only</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const BASE = '';   // same origin (Flask serves this page)
+let toastTimer = null;
+
+function toast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (isError ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 2200);
+}
+
+async function key(code) {
+  try {
+    const r = await fetch(`${BASE}/api/key/${code}`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.ok) toast(d.error || 'Error', true);
+  } catch (e) {
+    toast('Server unreachable', true);
+  }
+}
+
+async function assistant() {
+  try {
+    const r = await fetch(`${BASE}/api/assistant`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.ok) toast(d.error || 'Error', true);
+  } catch (e) {
+    toast('Server unreachable', true);
+  }
+}
+
+async function launch(app) {
+  try {
+    const r = await fetch(`${BASE}/api/launch/${app}`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) toast(`Opening ${app}`);
+    else toast(d.error || 'Launch failed', true);
+  } catch (e) {
+    toast('Server unreachable', true);
+  }
+}
+
+// Human-readable app names
+const APP_LABELS = {
+  'com.google.android.youtube.tv': 'YouTube',
+  'com.netflix.ninja': 'Netflix',
+  'com.amazon.amazonvideo.livingroom': 'Prime Video',
+  'com.disney.disneyplus': 'Disney+',
+  'com.android.settings': 'Settings',
+  'org.xbmc.kodi': 'Kodi',
+  'com.spotify.tv.android': 'Spotify',
+  'com.android.tv.settings': 'Settings',
+  'com.tcl.initsetup': 'TCL Home',
+};
+
+async function pollState() {
+  try {
+    const r = await fetch(`${BASE}/api/state`);
+    const d = await r.json();
+    const bar = document.getElementById('status-bar');
+    const appEl = document.getElementById('status-app');
+    const scrEl = document.getElementById('status-screen');
+    if (d.ok) {
+      bar.className = 'status-bar';
+      appEl.textContent = APP_LABELS[d.app] || d.app || '—';
+      scrEl.textContent = d.screen === 'ON' ? '· On' : '· Off';
+    } else {
+      bar.className = 'status-bar offline';
+      appEl.textContent = 'Disconnected';
+      scrEl.textContent = '';
+    }
+  } catch (e) {
+    document.getElementById('status-bar').className = 'status-bar offline';
+    document.getElementById('status-app').textContent = 'Server offline';
+    document.getElementById('status-screen').textContent = '';
+  }
+}
+
+// ─── Text modal ───
+function openTextModal() {
+  document.getElementById('text-modal').classList.add('open');
+  setTimeout(() => document.getElementById('text-input').focus(), 60);
+}
+
+function closeTextModal() {
+  document.getElementById('text-modal').classList.remove('open');
+  document.getElementById('text-input').value = '';
+}
+
+function onModalBgClick(e) {
+  if (e.target === document.getElementById('text-modal')) closeTextModal();
+}
+
+async function submitText() {
+  const text = document.getElementById('text-input').value;
+  if (!text.trim()) { closeTextModal(); return; }
+  closeTextModal();
+  try {
+    const r = await fetch(`${BASE}/api/text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const d = await r.json();
+    if (d.ok) toast(`Sent: ${text.length > 20 ? text.slice(0, 20) + '…' : text}`);
+    else toast(d.error || 'Send failed', true);
+  } catch (e) {
+    toast('Server unreachable', true);
+  }
+}
+
+// Keyboard shortcuts
+const KB = {
+  ArrowUp: 19, ArrowDown: 20, ArrowLeft: 21, ArrowRight: 22,
+  Enter: 23, Escape: 4,
+  ' ': 85,     // Space → Play/Pause
+  h: 3,        // H → Home
+  H: 3,
+  m: 164,      // M → Mute
+  M: 164,
+  PageUp: 24,  // PgUp → Vol+
+  PageDown: 25,// PgDn → Vol-
+};
+
+document.addEventListener('keydown', e => {
+  const modal = document.getElementById('text-modal');
+
+  // Inside the text modal: Enter sends, Escape closes
+  if (modal.classList.contains('open')) {
+    if (e.key === 'Enter') { e.preventDefault(); submitText(); }
+    if (e.key === 'Escape') { e.preventDefault(); closeTextModal(); }
+    return;
+  }
+
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  // T → open text modal
+  if (e.key === 't' || e.key === 'T') { e.preventDefault(); openTextModal(); return; }
+
+  if (e.key in KB) {
+    e.preventDefault();
+    key(KB[e.key]);
+  }
+});
+
+// Load TV name/IP and set headline
+async function loadConfig() {
+  try {
+    const r = await fetch(`${BASE}/api/config`);
+    const d = await r.json();
+    if (d.name || d.host) {
+      document.getElementById('headline').textContent =
+        [d.name, d.host].filter(Boolean).join(' · ');
+      document.title = d.name ? `${d.name} Remote` : 'TV Remote';
+    }
+  } catch (_) {}
+}
+
+// Poll ADB loopback status (only relevant when served by on-device APK)
+async function pollAdb() {
+  try {
+    const r = await fetch(`${BASE}/api/adb`);
+    const d = await r.json();
+    const dot = document.getElementById('adb-dot');
+    dot.className = d.connected ? 'ok' : 'err';
+    dot.title = d.connected ? 'ADB: connected' : 'ADB: not connected';
+  } catch (_) {
+    document.getElementById('adb-dot').className = '';
+  }
+}
+
+// Boot
+loadConfig();
+pollState();
+pollAdb();
+setInterval(pollState, 5000);
+setInterval(pollAdb, 10000);
+</script>
+</body>
+</html>

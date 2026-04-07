@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="#0F0F11"
+    android:padding="64dp">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="12dp">
+
+        <!-- Blue icon square -->
+        <TextView
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:gravity="center"
+            android:text="TV"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:background="@drawable/shape_icon"
+            android:layout_marginEnd="18dp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TV Remote"
+                android:textColor="#FFFFFF"
+                android:textSize="34sp"
+                android:textStyle="bold"
+                android:letterSpacing="-0.02"
+                android:lineSpacingMultiplier="1.0" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Web-based remote — open from any browser on your LAN"
+                android:textColor="#6B7280"
+                android:textSize="15sp" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ── Divider ─────────────────────────────────────────────────────────── -->
+    <View
+        android:layout_width="560dp"
+        android:layout_height="1dp"
+        android:background="#1F1F23"
+        android:layout_marginBottom="32dp" />
+
+    <!-- ── Status card ────────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="560dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/shape_card"
+        android:padding="28dp"
+        android:layout_marginBottom="28dp">
+
+        <!-- Server status row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="@drawable/shape_status_dot"
+                android:layout_marginEnd="14dp" />
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Stopped"
+                android:textColor="#D1D5DB"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- URL -->
+        <TextView
+            android:id="@+id/tvUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="—"
+            android:textColor="#60A5FA"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="14dp" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#2A2A2E"
+            android:layout_marginBottom="14dp" />
+
+        <!-- ADB status -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <View
+                android:id="@+id/adbDot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/shape_status_dot"
+                android:layout_marginEnd="10dp" />
+
+            <TextView
+                android:id="@+id/tvAdbStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ADB: not connected"
+                android:textColor="#6B7280"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ── Buttons ────────────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="560dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="24dp">
+
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_weight="1"
+            android:text="Start Server"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:background="@drawable/shape_btn_primary"
+            android:stateListAnimator="@null"
+            android:layout_marginEnd="12dp"
+            android:focusable="true"
+            android:nextFocusRight="@+id/btnStop" />
+
+        <Button
+            android:id="@+id/btnStop"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_weight="1"
+            android:text="Stop Server"
+            android:textColor="#9CA3AF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:background="@drawable/shape_btn_secondary"
+            android:stateListAnimator="@null"
+            android:enabled="false"
+            android:focusable="true"
+            android:nextFocusLeft="@id/btnStart" />
+
+    </LinearLayout>
+
+    <!-- ── Hint ──────────────────────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/tvHint"
+        android:layout_width="560dp"
+        android:layout_height="wrap_content"
+        android:text="On first run: approve the \'Allow USB Debugging\' prompt that appears on screen"
+        android:textColor="#374151"
+        android:textSize="13sp"
+        android:gravity="center" />
+
+</LinearLayout>
