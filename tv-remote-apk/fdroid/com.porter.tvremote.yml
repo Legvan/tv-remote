@@ -5,6 +5,8 @@ AuthorName: Legvan
 SourceCode: https://github.com/Legvan/tv-remote
 IssueTracker: https://github.com/Legvan/tv-remote/issues
 
+AutoName: TV Remote
+
 RepoType: git
 Repo: https://github.com/Legvan/tv-remote
 
