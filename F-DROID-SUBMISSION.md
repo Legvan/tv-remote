@@ -94,7 +94,7 @@ git commit -m "New app: com.porter.tvremote"
 git push origin com.porter.tvremote
 ```
 
-Then go to https://gitlab.com/fdroid/fdroiddata and you'll see a banner offering to open an MR.
+Then go to **your fork** at `https://gitlab.com/YOUR_GITLAB_USERNAME/fdroiddata` — you'll see a yellow banner offering to create an MR. If the banner is gone, go to Merge Requests → New merge request, set source to your fork's `com.porter.tvremote` branch and target to `fdroid/fdroiddata` `master`.
 
 **MR title:** `New app: com.porter.tvremote`  
 **Target branch:** `master`
