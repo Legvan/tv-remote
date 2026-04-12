@@ -58,8 +58,15 @@ cp ~/PROJECTS/tv-remote/tv-remote-apk/fdroid/com.porter.tvremote.yml metadata/
 
 ## Step 5 — (Optional) Validate locally
 
+Install fdroidserver via apt (do not use pip — system Python is externally managed):
+
 ```bash
-pip install fdroidserver
+sudo apt install fdroidserver
+```
+
+Then run the checks:
+
+```bash
 cd ~/fdroiddata
 fdroid readmeta
 fdroid lint com.porter.tvremote
