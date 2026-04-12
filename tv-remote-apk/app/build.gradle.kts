@@ -12,8 +12,8 @@ android {
         applicationId = "com.porter.tvremote"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
     }
 
     signingConfigs {
@@ -37,16 +37,15 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
-
 
 }
 
-// kotlinOptions was removed in AGP 9.x — use jvmToolchain at top level instead
+// F-Droid build server provides JDK 21 only (auto-provisioning disabled)
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 val ktorVersion = "2.3.12"
