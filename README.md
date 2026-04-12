@@ -12,7 +12,8 @@ Works with any Google TV or Android TV device — TCL, Sony, Philips, Hisense, N
 
 - **Auto-discovery** — scans your LAN via mDNS and ADB port scan, identifies model from TLS certificate (no pairing required)
 - **Web remote** — phone- and desktop-friendly UI accessible at `http://localhost:5052` on your machine or `http://<machine-ip>:5052` from any device on your LAN
-- **Full controls** — D-pad, volume, media, app shortcuts (YouTube, Netflix, Prime, Disney+, Spotify)
+- **On-device APK** — install once on the TV; serves the remote UI on port 8080 so any phone/tablet on your LAN can control the TV without a PC running
+- **Full controls** — D-pad, volume, media, channel (CH▲/CH▼ + 123 numpad), app shortcuts (YouTube, Netflix, Prime, Disney+, Spotify)
 - **Google Assistant** — launches via `am start` (most reliable method on Google TV)
 - **Text input** — type search queries or passwords from your keyboard; modal opens with `T`
 - **Keyboard shortcuts** — arrow keys, Enter, Escape, H (Home), M (Mute), PgUp/Dn (volume), T (text)
@@ -83,6 +84,7 @@ Opens the browser automatically at `http://localhost:5052`. Use it from any devi
 ./tv key <keycode>            # raw Android keycode
 ./tv shell <cmd>              # raw ADB shell command
 ./tv discover                 # re-scan network for TV devices
+./tv start-server             # start the on-device HTTP server (port 8080)
 ```
 
 ### Re-run setup
@@ -114,6 +116,21 @@ All ADB communication is **direct TCP** (no system `adb` daemon needed — pure 
 
 ---
 
+## On-device APK
+
+`tv-remote-apk/` is an Android/Kotlin app that runs **on the TV itself**, embedding a Ktor HTTP server on port 8080. Once installed, any phone or tablet on your LAN can open `http://<tv-ip>:8080` — no PC required.
+
+- Auto-starts on boot via `BOOT_COMPLETED` receiver
+- Foreground service + WakeLock keeps the server alive
+- Uses [AdbLib](https://github.com/cgutman/AdbLib) loopback to inject key events (no root needed)
+- Available on the [Google Play Store](https://play.google.com/store/apps/details?id=com.porter.tvremote)
+
+To start the server remotely from the CLI (e.g. if the app was killed):
+
+```bash
+./tv start-server
+```
+
 ## Project structure
 
 ```
@@ -129,6 +146,7 @@ tv-remote/
 │   ├── tv.py               # CLI implementation
 │   ├── keygen.py           # ADB RSA key generator
 │   └── static/index.html   # Web remote UI
+├── tv-remote-apk/          # On-device Android APK (Ktor server on port 8080)
 └── docs/                   # Protocol notes, keycode reference
 ```
 

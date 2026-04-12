@@ -65,6 +65,11 @@ class MainActivity : AppCompatActivity() {
             IntentFilter(RemoteService.ACTION_STATUS_UPDATE),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
+        // Re-sync UI from the in-process snapshot in case we missed a broadcast while paused
+        // (e.g. the "Allow USB Debugging?" dialog triggers onPause/onResume mid-startup).
+        RemoteService.currentStatus?.let { s ->
+            updateUi(s.serverRunning, s.adbConnected, s.url)
+        }
     }
 
     override fun onPause() {

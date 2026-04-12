@@ -302,10 +302,19 @@ Before submitting to closed testing:
       - `screenshot_phone1.png` (720×1383, lifestyle)
       - `screenshot_phone2.png` (1080×2194, real)
       - `tv_banner_320x180.png` (320×180)
-- [ ] **TODO: Record foreground service demo video** (screen recording on TV showing: start → notification → browser connects → button press)
-- [ ] Store listing complete (all graphics, text, category) — waiting for Play Console access
-- [ ] IARC content rating completed — waiting for Play Console access
-- [ ] Foreground service declaration submitted with demo video — waiting for Play Console access
-- [ ] Ads declaration submitted — waiting for Play Console access
-- [ ] Play Console account verified by Google — IN PROGRESS
-- [ ] At least 12 testers identified (personal accounts)
+- [x] **Foreground service demo videos recorded** — 3 clips in `store-assets/`:
+      - `VID_20260408_181606.mp4` — starting the server on the TV (shows foreground notification)
+      - `screen-20260408-181708~2.mp4` — phone screen recording of the web remote in use
+      - `VID_20260408_181831.mp4` — laptop browser controlling TV (TV reacting in background)
+- [x] Store listing complete (all graphics, text, category)
+- [x] IARC content rating completed — Everyone / PEGI 3
+- [x] Foreground service declaration submitted with demo video
+- [x] Ads declaration submitted
+- [x] Play Console account verified by Google
+- [x] AAB uploaded — versionCode=2, versionName="1.1", targetSdk=35, R8 enabled
+- [x] Mapping file (mapping.txt) uploaded alongside AAB
+- [x] Internal testing track live — opt-in: https://play.google.com/apps/testing/com.porter.tvremote
+- [x] Tester recruitment post live — r/TestersCommunity
+- [ ] Reach 12 opted-in testers (currently waiting)
+- [ ] 14-day closed testing window complete
+- [ ] Apply for production access in Play Console

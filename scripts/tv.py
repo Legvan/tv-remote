@@ -21,6 +21,7 @@ Usage:
   python tv.py text <words>     Send text to focused input field (ASCII only)
   python tv.py shell <cmd>      Run arbitrary ADB shell command
   python tv.py discover         Scan network for Android TV / Google TV devices
+  python tv.py start-server     Start the on-device TV Remote HTTP server (port 8080)
 """
 import sys
 import os
@@ -138,6 +139,13 @@ def main():
     if cmd in KEYS:
         with TVClient() as tv:
             tv.key(KEYS[cmd])
+        return
+
+    if cmd == 'start-server':
+        with TVClient() as tv:
+            tv.shell('am start-foreground-service com.porter.tvremote/.RemoteService')
+            from adb_client import TV_HOST
+            print(f"TV Remote server started — http://{TV_HOST}:8080")
         return
 
     print(f"Unknown command: {cmd}")

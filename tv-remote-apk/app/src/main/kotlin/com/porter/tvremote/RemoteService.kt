@@ -38,6 +38,20 @@ class RemoteService : Service() {
         const val EXTRA_SERVER_RUNNING = "server_running"
         const val EXTRA_ADB_CONNECTED  = "adb_connected"
         const val EXTRA_SERVER_URL     = "server_url"
+
+        /**
+         * Last-known status snapshot, kept in-process so MainActivity can re-sync
+         * in onResume() after missing a broadcast (e.g. the "Allow USB Debugging?"
+         * dialog causes onPause/onResume while the service is still starting).
+         * Null when the service is not running.
+         */
+        data class StatusSnapshot(
+            val serverRunning: Boolean,
+            val adbConnected: Boolean,
+            val url: String?
+        )
+        @Volatile var currentStatus: StatusSnapshot? = null
+            private set
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -69,6 +83,7 @@ class RemoteService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "Service destroying")
+        currentStatus = null
         httpServer.stop()
         adb.disconnect()
         serviceScope.cancel()
@@ -152,6 +167,7 @@ class RemoteService : Service() {
     // ─── Broadcasts ───────────────────────────────────────────────────────────
 
     private fun broadcastStatus(serverRunning: Boolean, adbConnected: Boolean, url: String?) {
+        currentStatus = StatusSnapshot(serverRunning, adbConnected, url)
         sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
             putExtra(EXTRA_SERVER_RUNNING, serverRunning)
             putExtra(EXTRA_ADB_CONNECTED,  adbConnected)

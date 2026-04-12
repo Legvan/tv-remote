@@ -219,6 +219,73 @@ button:active { transform: scale(0.91) !important; }
   text-transform: uppercase;
 }
 
+/* ─── Channel row ─── */
+.ch-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.ch-pill {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.07);
+  border-radius: 28px;
+  padding: 4px;
+  gap: 0;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.cbtn {
+  width: 54px; height: 48px;
+  border-radius: 24px;
+  background: transparent;
+  color: rgba(255,255,255,0.65);
+  font-size: 14px;
+  font-weight: 700;
+  flex-direction: column;
+  gap: 2px;
+}
+.cbtn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.95); }
+.cbtn:first-child { border-radius: 24px 12px 12px 24px; }
+.cbtn:last-child  { border-radius: 12px 24px 24px 12px; }
+.ch-lbl {
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: rgba(255,255,255,0.28);
+  text-transform: uppercase;
+}
+.numpad-open-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.numpad-open-btn:hover { background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.9); }
+
+/* ─── Numpad modal ─── */
+.numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.nkey {
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.88);
+  font-size: 20px;
+  font-weight: 600;
+  font-family: inherit;
+}
+.nkey:hover { background: rgba(255,255,255,0.15); color: white; }
+.nkey-zero { grid-column: 2; }
+
 /* ─── Divider ─── */
 .divider {
   height: 1px;
@@ -451,7 +518,7 @@ button:active { transform: scale(0.91) !important; }
     <button class="ibtn" title="Input / Source" onclick="key(178)">⊞</button>
     <button class="ibtn" title="Settings"       onclick="key(176)">⚙</button>
     <button class="ibtn" title="Type text (T)"  onclick="openTextModal()" style="font-size:16px">⌨</button>
-    <button class="ibtn power-btn" title="Power (toggle)" onclick="key(26)">⏻</button>
+    <button class="ibtn power-btn" title="Power (toggle)" onclick="key(26)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.343 6.343a8 8 0 1 0 11.314 0"/></svg></button>
   </div>
 
   <!-- Google Assistant / Search -->
@@ -487,6 +554,15 @@ button:active { transform: scale(0.91) !important; }
     </button>
   </div>
 
+  <!-- Channel: rocker + numpad -->
+  <div class="ch-row">
+    <div class="ch-pill">
+      <button class="cbtn" title="Channel Up"   onclick="key(166)">▲<span class="ch-lbl">CH</span></button>
+      <button class="cbtn" title="Channel Down" onclick="key(167)">▼<span class="ch-lbl">CH</span></button>
+    </div>
+    <button class="numpad-open-btn" title="Enter channel number" onclick="openNumpad()">123</button>
+  </div>
+
   <div class="divider"></div>
 
   <!-- Volume -->
@@ -518,7 +594,27 @@ button:active { transform: scale(0.91) !important; }
 </div>
 
 <div class="kbd-hint">
-  Arrow keys · Enter=OK · Esc=Back · H=Home · Space=Play/Pause · M=Mute · PgUp/Dn=Volume · T=Text
+  Arrow keys · Enter=OK · Esc=Back · H=Home · Space=Play/Pause · M=Mute · PgUp/Dn=Volume · T=Text · 0–9=Channel (when numpad open)
+</div>
+
+<!-- Numpad modal -->
+<div class="text-modal" id="numpad-modal" onclick="onNumpadBgClick(event)">
+  <div class="text-card">
+    <div class="text-card-title">123 Channel</div>
+    <div class="numpad-grid">
+      <button class="nkey" onclick="numkey(8)">1</button>
+      <button class="nkey" onclick="numkey(9)">2</button>
+      <button class="nkey" onclick="numkey(10)">3</button>
+      <button class="nkey" onclick="numkey(11)">4</button>
+      <button class="nkey" onclick="numkey(12)">5</button>
+      <button class="nkey" onclick="numkey(13)">6</button>
+      <button class="nkey" onclick="numkey(14)">7</button>
+      <button class="nkey" onclick="numkey(15)">8</button>
+      <button class="nkey" onclick="numkey(16)">9</button>
+      <button class="nkey nkey-zero" onclick="numkey(7)">0</button>
+    </div>
+    <div class="text-hint">Tap outside or Escape to close</div>
+  </div>
 </div>
 
 <!-- Text input modal -->
@@ -655,6 +751,20 @@ async function submitText() {
   }
 }
 
+// ─── Numpad modal ───
+function openNumpad() {
+  document.getElementById('numpad-modal').classList.add('open');
+}
+function closeNumpad() {
+  document.getElementById('numpad-modal').classList.remove('open');
+}
+function onNumpadBgClick(e) {
+  if (e.target === document.getElementById('numpad-modal')) closeNumpad();
+}
+async function numkey(code) {
+  await key(code);
+}
+
 // Keyboard shortcuts
 const KB = {
   ArrowUp: 19, ArrowDown: 20, ArrowLeft: 21, ArrowRight: 22,
@@ -668,13 +778,23 @@ const KB = {
   PageDown: 25,// PgDn → Vol-
 };
 
+const NUMKEYS = { '0':7,'1':8,'2':9,'3':10,'4':11,'5':12,'6':13,'7':14,'8':15,'9':16 };
+
 document.addEventListener('keydown', e => {
   const modal = document.getElementById('text-modal');
+  const numpad = document.getElementById('numpad-modal');
 
   // Inside the text modal: Enter sends, Escape closes
   if (modal.classList.contains('open')) {
     if (e.key === 'Enter') { e.preventDefault(); submitText(); }
     if (e.key === 'Escape') { e.preventDefault(); closeTextModal(); }
+    return;
+  }
+
+  // Inside the numpad modal: digits fire, Escape closes
+  if (numpad.classList.contains('open')) {
+    if (e.key === 'Escape') { e.preventDefault(); closeNumpad(); }
+    if (e.key in NUMKEYS) { e.preventDefault(); numkey(NUMKEYS[e.key]); }
     return;
   }
 

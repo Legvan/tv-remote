@@ -26,3 +26,10 @@ adbkey.pub
 
 # Logs
 *.log
+
+# Android keystores — never commit signing keys
+*.jks
+*.keystore
+
+# Play Store demo videos — large binaries, upload via Play Console directly
+tv-remote-apk/store-assets/*.mp4
