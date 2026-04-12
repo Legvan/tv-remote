@@ -1,0 +1,1 @@
+v1.1: Fixed "Starting…" stuck on first launch caused by ADB pairing dialog interrupting status broadcast. Added channel controls (CH+/CH−) and numeric keypad (0–9). Power button now uses inline SVG for reliable rendering on all devices.

@@ -1,0 +1,37 @@
+Categories:
+  - Connectivity
+License: MIT
+AuthorName: Legvan
+SourceCode: https://github.com/Legvan/tv-remote
+IssueTracker: https://github.com/Legvan/tv-remote/issues
+
+Summary: Web remote control for Android TV via ADB
+Description: |-
+  TV Remote runs a tiny HTTP server (port 8080) directly on your Android TV.
+  Open http://&lt;tv-ip&gt;:8080 in any browser on the same LAN and get a full
+  remote control interface — no app needed on the controller device.
+
+  Input is injected via ADB loopback (127.0.0.1:5555), so no root is required.
+  Works on any Android TV or Google TV device with Developer Options and ADB
+  over network enabled.
+
+  Features: D-pad, Back/Home/Menu, volume, power, channel controls, numeric
+  keypad, text input, and Google Assistant launch.
+
+  Completely local — no cloud, no accounts, no telemetry.
+
+RepoType: git
+Repo: https://github.com/Legvan/tv-remote
+
+Builds:
+  - versionName: '1.1'
+    versionCode: 2
+    commit: v1.1
+    subdir: tv-remote-apk
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: '1.1'
+CurrentVersionCode: 2

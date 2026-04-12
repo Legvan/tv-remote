@@ -66,7 +66,8 @@ dependencies {
 
     // AdbLib — pure-Java ADB protocol client via JitPack (used by ADBRemoteATV)
     // Used to connect to the TV's own ADB daemon at 127.0.0.1:5555
-    implementation("com.github.cgutman:AdbLib:master-SNAPSHOT")
+    // Pinned to specific commit (no tags exist on upstream repo; stable since 2017)
+    implementation("com.github.cgutman:AdbLib:d6937951eb98557c76ee2081e383d50886ce109a")
 
     // JSON serialization (1.7.x supports Kotlin 2.x)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
