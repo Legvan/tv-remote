@@ -64,18 +64,24 @@ Install fdroidserver via apt (do not use pip — system Python is externally man
 sudo apt install fdroidserver
 ```
 
-Then run the checks:
+The apt version (2.2.1) is old and crashes on fdroiddata's `config.yml` format.
+Temporarily move it out of the way before running any `fdroid` command:
 
 ```bash
 cd ~/fdroiddata
+mv config.yml config.yml.bak
 fdroid readmeta
 fdroid lint com.porter.tvremote
 fdroid checkupdates --allow-dirty com.porter.tvremote
+mv config.yml.bak config.yml   # restore afterwards
 ```
 
 Fix any warnings before submitting. Common issues:
 - Tag `v1.1` not pushed yet → do Step 1 first
 - YAML indentation errors → YAML is space-sensitive, use 2 spaces
+
+> If validation is still awkward, skip this step entirely — it is optional.
+> The GitLab CI pipeline runs the same checks automatically when you open the MR.
 
 ---
 
