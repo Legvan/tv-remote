@@ -105,7 +105,7 @@ The CI/CD pipeline will run automatically. Wait for it to pass before requesting
 
 ## Step 7 — Monitor the build
 
-**MR submitted 2026-04-12:** https://gitlab.com/fdroid/fdroiddata/-/merge_requests/36371
+**MR submitted 2026-04-12:** https://gitlab.com/fdroid/fdroiddata/-/merge_requests/36373
 
 After the MR is merged (typically a few days), check:
 - https://monitor.f-droid.org/builds/build — search for `com.porter.tvremote`
