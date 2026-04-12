@@ -5,7 +5,7 @@ AuthorName: Legvan
 SourceCode: https://github.com/Legvan/tv-remote
 IssueTracker: https://github.com/Legvan/tv-remote/issues
 
-Summary: Web remote control for Android TV via ADB
+Summary: Self-hosted LAN web remote for smart TVs using ADB
 Description: |-
   TV Remote runs a tiny HTTP server (port 8080) directly on your Android TV.
   Open http://&lt;tv-ip&gt;:8080 in any browser on the same LAN and get a full
