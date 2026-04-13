@@ -1,5 +1,5 @@
 Categories:
-  - Connectivity
+  - Remote Controller
 License: MIT
 AuthorName: Legvan
 SourceCode: https://github.com/Legvan/tv-remote
@@ -14,10 +14,9 @@ Builds:
   - versionName: '1.2'
     versionCode: 3
     commit: v1.2
-    subdir: tv-remote-apk
+    subdir: tv-remote-apk/app
     gradle:
       - yes
-    output: app/build/outputs/apk/release/*.apk
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
