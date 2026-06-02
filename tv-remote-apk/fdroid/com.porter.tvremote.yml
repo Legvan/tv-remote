@@ -14,7 +14,7 @@ Binaries: https://github.com/Legvan/tv-remote/releases/download/v%v/tv-remote-v%
 Builds:
   - versionName: '1.2'
     versionCode: 3
-    commit: 6b9c08d214633be04bba138cb0e64a22f67ccaaf
+    commit: 6812963f46441d573ac3f964b92869ce9eff4f85
     subdir: tv-remote-apk/app
     gradle:
       - yes
