@@ -41,6 +41,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
 }
 
 // F-Droid build server provides JDK 21 only (auto-provisioning disabled)
