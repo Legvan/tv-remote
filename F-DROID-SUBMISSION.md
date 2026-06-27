@@ -6,7 +6,7 @@ Everything prepared automatically by Claude Code. The steps below require your a
 
 - [x] `LICENSE` (MIT) added to repo root and `tv-remote-apk/`
 - [x] AdbLib pinned from `master-SNAPSHOT` to commit `d6937951eb` in `app/build.gradle.kts`
-- [x] Fastlane metadata created at `tv-remote-apk/fastlane/metadata/android/en-US/`
+- [x] Fastlane metadata created at `fastlane/metadata/android/en-US/` (repo root)
 - [x] F-Droid metadata YAML prepared at `tv-remote-apk/fdroid/com.porter.tvremote.yml`
 - [x] Changes committed and pushed to GitHub
 
@@ -122,7 +122,7 @@ F-Droid upgraded their build server hardware on 2025-12-30. AGP 9.1.0 should bui
 ### Future releases
 When you release v1.2 or later:
 1. Bump `versionCode` and `versionName` in `app/build.gradle.kts`
-2. Add `tv-remote-apk/fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`
+2. Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`
 3. Commit, push, then `git tag v1.2 && git push origin v1.2`
 4. F-Droid picks up new tags automatically via `AutoUpdateMode: Version` — no MR needed.
 
