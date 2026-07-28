@@ -315,6 +315,40 @@ Before submitting to closed testing:
 - [x] Mapping file (mapping.txt) uploaded alongside AAB
 - [x] Internal testing track live — opt-in: https://play.google.com/apps/testing/com.porter.tvremote
 - [x] Tester recruitment post live — r/TestersCommunity
+- [ ] **Upload v1.4 AAB (targetSdk 36) — deadline 2026-08-31** (see below)
 - [ ] Reach 12 opted-in testers (currently waiting)
 - [ ] 14-day closed testing window complete
 - [ ] Apply for production access in Play Console
+
+---
+
+## Target API level 36 (Android 16) — Play requirement
+
+Play Console warning received 2026-07-28: from **31 Aug 2026** apps not targeting API 36 can no
+longer be updated. The uploaded build (versionCode 2) targeted API 35.
+
+**Done in v1.4 / versionCode 5:**
+- `compileSdk = 36`, `targetSdk = 36`
+- Edge-to-edge handled in `MainActivity.applyWindowInsets()` — from targetSdk 36 the
+  `windowOptOutEdgeToEdgeEnforcement` escape hatch is ignored, so system bar and display cutout
+  insets are added on top of the layout's base padding. TVs report zero insets, so TV layout is
+  unchanged.
+- Predictive back needed no work — the app never overrode `onBackPressed()`.
+- `android:screenOrientation="landscape"` is now ignored on screens ≥600dp. Harmless here (TV is
+  landscape anyway); the `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY` opt-out was deliberately
+  not added since it stops working at API 37.
+
+**Artifacts:** `app/build/outputs/bundle/release/app-release.aab` +
+`app/build/outputs/mapping/release/mapping.txt`
+
+**Upload steps:** Play Console → Testing → Internal testing → Create new release → upload the AAB
+(mapping.txt uploads with it) → roll out. Verify on a real Android 16 device before promoting.
+
+### Watch item — local network permission
+
+Android 16 introduces `RESTRICT_LOCAL_NETWORK`, which will gate LAN access behind the
+`NEARBY_WIFI_DEVICES` runtime permission. This app binds an HTTP server on port 8080 for LAN
+clients, so it is squarely in scope. Enforcement is **not** active yet (opt-in via
+`adb shell am compat enable RESTRICT_LOCAL_NETWORK com.porter.tvremote`) and the ADB loopback to
+`127.0.0.1:5555` is exempt either way. Deliberately not implemented yet — a runtime permission
+prompt is awkward on a TV. Re-check when Google announces enforcement.

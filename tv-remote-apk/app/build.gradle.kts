@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.porter.tvremote"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.porter.tvremote"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 4
-        versionName = "1.3"
+        targetSdk = 36
+        versionCode = 5
+        versionName = "1.4"
     }
 
     signingConfigs {

@@ -11,6 +11,8 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 /**
  * Launcher activity — shows server status (URL, ADB state) and Start/Stop buttons.
@@ -42,6 +44,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        applyWindowInsets()
+
         tvStatus    = findViewById(R.id.tvStatus)
         tvUrl       = findViewById(R.id.tvUrl)
         tvAdbStatus = findViewById(R.id.tvAdbStatus)
@@ -55,6 +59,29 @@ class MainActivity : AppCompatActivity() {
 
         // Default focus to Start button on TV D-pad
         btnStart.requestFocus()
+    }
+
+    /**
+     * Edge-to-edge is mandatory from targetSdk 36 — windowOptOutEdgeToEdgeEnforcement is ignored.
+     * The layout's own padding stays the design baseline; system bar and cutout insets are added
+     * on top of it so nothing hides behind the status/navigation bars on phones. TVs report zero
+     * insets, so the TV layout is unchanged.
+     */
+    private fun applyWindowInsets() {
+        val root = findViewById<View>(R.id.root)
+        val basePadding = root.paddingLeft
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, windowInsets ->
+            val bars = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(
+                basePadding + bars.left,
+                basePadding + bars.top,
+                basePadding + bars.right,
+                basePadding + bars.bottom
+            )
+            windowInsets
+        }
     }
 
     override fun onResume() {

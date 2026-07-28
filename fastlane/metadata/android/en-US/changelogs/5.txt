@@ -1,0 +1,1 @@
+v1.4: Targets Android 16 (API 36) as required by Google Play. Handles the mandatory edge-to-edge layout so the UI no longer sits under the system bars on phones. No changes to the remote itself.
