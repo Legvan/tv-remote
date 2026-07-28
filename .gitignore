@@ -33,3 +33,7 @@ adbkey.pub
 
 # Play Store demo videos — large binaries, upload via Play Console directly
 tv-remote-apk/store-assets/*.mp4
+
+# Local secrets
+.env.token
+.env
