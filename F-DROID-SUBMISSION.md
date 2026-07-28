@@ -107,6 +107,21 @@ The CI/CD pipeline will run automatically. Wait for it to pass before requesting
 
 **MR submitted 2026-04-12:** https://gitlab.com/fdroid/fdroiddata/-/merge_requests/36373
 
+### MR history
+
+| Date | Event |
+|------|-------|
+| 2026-04-13 | @linsui review: use `Remote Controller` category, `subdir: app` — fixed |
+| 2026-05-15 | @linsui: use full commit hash instead of tag, add `Binaries` + `AllowedAPKSigningKeys` for reproducible build — fixed 2026-06-02 |
+| 2026-06-23 | @linsui: move fastlane metadata to the repo root |
+| 2026-06-27 | fastlane moved to repo root (`2e39108`), but the MR was never updated |
+| 2026-07-21 | MR **closed by @linsui** for inactivity ("feel free to re-open") |
+| 2026-07-28 | Released v1.3 / versionCode 4, metadata pointed at `9ea658c`, **MR reopened** |
+
+The build commit must contain `fastlane/` at the repo root — commits before `2e39108` do not.
+The published release APK must be built from exactly the commit in `Builds:` or reproducible-build
+verification against `Binaries:` will fail. v1.2 violated this (release predated the last source change).
+
 After the MR is merged (typically a few days), check:
 - https://monitor.f-droid.org/builds/build — search for `com.porter.tvremote`
 
@@ -120,11 +135,14 @@ Build cycle runs approximately every 24–48 hours. Once a green build appears, 
 F-Droid upgraded their build server hardware on 2025-12-30. AGP 9.1.0 should build cleanly. If the build fails on their end, the error log at monitor.f-droid.org will show why — most likely cause would be a missing `signingConfigs` block issue (F-Droid builds unsigned, then signs itself; the current `signingConfigs` block in `build.gradle.kts` reads from Gradle properties that won't exist on their server). If this happens, move the `signingConfig` assignment inside an `if` guard or add `buildFeatures { ... }` per reviewer feedback.
 
 ### Future releases
-When you release v1.2 or later:
-1. Bump `versionCode` and `versionName` in `app/build.gradle.kts`
+When you release v1.4 or later:
+1. Bump `versionCode` and `versionName` in `tv-remote-apk/app/build.gradle.kts`
 2. Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`
-3. Commit, push, then `git tag v1.2 && git push origin v1.2`
-4. F-Droid picks up new tags automatically via `AutoUpdateMode: Version` — no MR needed.
+3. Commit, then `git tag vX.Y && git push origin master vX.Y`
+4. Build **from the tagged commit**: `cd tv-remote-apk && ./gradlew clean assembleRelease`
+5. Publish the APK as `tv-remote-vX.Y.apk` on the GitHub release for that tag — the `Binaries:`
+   URL pattern depends on this exact filename, and the APK must come from the tagged tree
+6. F-Droid picks up new tags automatically via `AutoUpdateMode: Version` — no MR needed.
 
 ### Slow-queue alternative
 If you'd rather not deal with GitLab, file a ticket at:
