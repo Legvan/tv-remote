@@ -1,0 +1,1 @@
+v1.3: Packaging release — fastlane metadata moved to the repository root for F-Droid. No functional changes to the app.
