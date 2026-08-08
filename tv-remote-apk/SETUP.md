@@ -12,6 +12,10 @@ Browser (phone/laptop/TV)
             → cgutman/AdbLib connecting to 127.0.0.1:5555
                 → TV's own ADB daemon (grants "shell" privilege)
                     → input keyevent / am start / dumpsys
+
+Yatse (phone/tablet)
+    → UDP :5600 (`YatseStart-Xbmc`)
+        → fixed wake + Kodi launch action through the same AdbController
 ```
 
 The app runs a Ktor CIO HTTP server inside a foreground `Service`.  
@@ -26,7 +30,7 @@ For input injection it connects back to the TV's own ADB daemon via the ADB wire
 |------|---------|
 | Android Studio | Meerkat 2024.3+ (AGP 9.1.0 / Gradle 8.13) |
 | Android SDK | API 34 (install via SDK Manager) |
-| TV | ADB over network enabled (Developer Options → USB Debugging / ADB over network) |
+| TV | Network debugging / ADB over network enabled; on Nvidia Shield, the separate USB debugging option is not required |
 
 ---
 
@@ -63,15 +67,43 @@ adb -s 192.168.1.50:5555 install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## First-run setup
 
-1. Open the **TV Remote** app from the TV launcher.
-2. Press **Start Server** (or it auto-starts on boot after first manual launch).
-3. **A dialog will appear on-screen:** "Allow USB Debugging from this computer?"  
-   Select **Allow** (optionally tick "Always allow").
-4. The ADB dot in the status bar turns green.
-5. On any device on the same LAN, open `http://<TV-IP>:8080`.
+1. Enable **Network debugging / ADB over network** in the TV's Developer Options and
+   leave it enabled. On Nvidia Shield, do not enable the separate USB debugging option;
+   Network debugging is sufficient and attached USB storage can remain connected.
+2. Open the **TV Remote** app from the TV launcher.
+3. Press **Start Server**. Despite its label, this starts both the HTTP server and the
+   Yatse UDP listener. The service auto-starts on subsequent boots.
+4. **A dialog will appear on-screen:** "Allow USB Debugging from this computer?"
+   This generic Android label is also used for Network debugging connections. Select
+   **Allow** and enable **Always allow** when available.
+5. Confirm that the ADB indicator turns green.
+6. Optionally, open `http://<TV-IP>:8080` from another device on the same LAN, replacing
+   `<TV-IP>` with the TV's address. This HTTP remote is separate from Yatse support.
 
 > The RSA key pair is generated once and stored in the app's private storage.  
 > You will not be prompted again unless you clear app data.
+
+### Yatse Remote Starter
+
+There is no Yatse-specific setting in the TV Remote app after completing the first-run
+steps above.
+
+1. In Yatse's host settings, select the TV's IP address and enable Wake-on-LAN/Remote
+   Starter.
+2. Set the Remote Starter UDP port to `5600`.
+3. Keep the phone/tablet and TV on the same trusted LAN.
+4. Put the TV into normal standby/sleep (not fully powered off).
+5. Use Yatse's **Wake on LAN** action.
+6. Expected result: the TV wakes and Kodi opens in the foreground.
+
+No computer or external ADB client is needed after installation. Network debugging on
+the TV must remain enabled. If HTTP port `8080` is already in use (for example, by
+Kodi's web server), the HTTP remote may be unavailable while the Yatse listener on
+UDP `5600` continues to work.
+
+The compatibility listener recognizes only the fixed `YatseStart-Xbmc` marker and
+does not expose packet-controlled ADB or shell commands. The protocol is
+unauthenticated, so keep the APK reachable only from a trusted local network.
 
 ---
 
@@ -79,10 +111,11 @@ adb -s 192.168.1.50:5555 install -r app/build/outputs/apk/debug/app-debug.apk
 
 | Symptom | Fix |
 |---------|-----|
-| ADB dot stays red | Developer Options → enable USB Debugging / ADB over network |
-| Buttons do nothing | Tap the ADB dot — if red, re-enable ADB debugging |
-| Port 8080 unreachable | Check TV firewall / router isolation settings |
-| "Allow USB Debugging" dialog never appeared | Open the TV Remote app and press Start; the dialog appears after ~2 seconds |
+| ADB dot stays red | Enable Network debugging / ADB over network, then stop and restart the TV Remote service |
+| Buttons do nothing | If the ADB indicator is red, re-enable Network debugging and restart the service |
+| Port 8080 unreachable | Another app may already use port 8080; this does not disable the Yatse listener |
+| Authorization dialog never appeared | Press Start; if needed, toggle Network debugging off and on, then try again. The dialog may still be labelled "Allow USB Debugging" |
+| Yatse does not wake the TV | Confirm the service is running, both devices are on the same LAN, Yatse uses UDP port 5600, and the TV is in standby rather than fully powered off |
 
 ---
 
@@ -97,6 +130,7 @@ tv-remote-apk/
 │   │   ├── kotlin/com/porter/tvremote/
 │   │   │   ├── AdbController.kt       ← AdbLib loopback + all TV commands
 │   │   │   ├── HttpServer.kt          ← Ktor CIO server + REST routes
+│   │   │   ├── YatseStarter.kt        ← UDP 5600 compatibility listener
 │   │   │   ├── RemoteService.kt       ← foreground service lifecycle
 │   │   │   ├── MainActivity.kt        ← TV launcher activity (D-pad navigable)
 │   │   │   └── BootReceiver.kt        ← auto-start on boot
@@ -132,10 +166,11 @@ tv-remote-apk/
 
 ---
 
-## Port
+## Ports
 
 The HTTP server binds `0.0.0.0:8080`.  
 The original Python/Flask server uses port `5052` on the PC — no conflict since they run on different machines.
+The Yatse compatibility listener binds UDP port `5600` on the TV.
 
 ---
 

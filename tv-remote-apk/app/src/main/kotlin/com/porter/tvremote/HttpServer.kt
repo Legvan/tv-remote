@@ -13,6 +13,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.net.InetSocketAddress
+import java.net.ServerSocket
 
 /**
  * Embedded Ktor CIO HTTP server.
@@ -37,6 +39,17 @@ class HttpServer(
 ) {
     companion object {
         private const val TAG = "HttpServer"
+        private const val HOST = "0.0.0.0"
+
+        /**
+         * Ktor CIO binds asynchronously, so detect an occupied port before starting it.
+         * This makes the bind failure catchable by RemoteService instead of crashing the app.
+         */
+        internal fun verifyPortAvailable(port: Int) {
+            ServerSocket().use { probe ->
+                probe.bind(InetSocketAddress(HOST, port))
+            }
+        }
     }
 
     @Serializable
@@ -57,7 +70,8 @@ class HttpServer(
     private var server: ApplicationEngine? = null
 
     fun start() {
-        server = embeddedServer(CIO, port = port, host = "0.0.0.0") {
+        verifyPortAvailable(port)
+        server = embeddedServer(CIO, port = port, host = HOST) {
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
             }

@@ -25,6 +25,9 @@ class AdbController(private val context: Context) {
         private const val TAG = "AdbController"
         const val ADB_HOST = "127.0.0.1"
         const val ADB_PORT = 5555
+        const val KEYCODE_WAKEUP = 224
+        private const val RECONNECT_DELAY_MS = 250L
+        private const val KODI_ACTIVITY = "org.xbmc.kodi/.Splash"
 
         /** Maps URL-friendly names to Android activity strings (mirrors Python APPS dict). */
         val APPS = mapOf(
@@ -34,7 +37,7 @@ class AdbController(private val context: Context) {
             "disney"   to "com.disney.disneyplus/.MainActivity",
             "settings" to "com.android.settings/.Settings",
             "spotify"  to "com.spotify.tv.android/.SpotifyTVActivity",
-            "kodi"     to "org.xbmc.kodi/.Splash",
+            "kodi"     to KODI_ACTIVITY,
         )
 
         /** AdbLib Base64 adapter using Android's built-in Base64 codec. */
@@ -99,16 +102,29 @@ class AdbController(private val context: Context) {
     fun shell(cmd: String): String {
         synchronized(lock) {
             for (attempt in 0..1) {
-                val conn = connection ?: if (attempt == 0 && connect()) connection!! else
-                    throw IllegalStateException(
-                        "ADB not connected — enable ADB over network in Developer Options"
-                    )
+                var conn = connection
+                if (conn == null) {
+                    if (!connect()) {
+                        if (attempt == 1) {
+                            throw IllegalStateException(
+                                "ADB not connected — enable ADB over network in Developer Options"
+                            )
+                        }
+                        Thread.sleep(RECONNECT_DELAY_MS)
+                        continue
+                    }
+                    conn = connection ?: throw IllegalStateException("ADB connection was not retained")
+                }
+                val activeConnection = conn
+                    ?: throw IllegalStateException("ADB connection was not retained")
                 return try {
-                    execShell(conn, cmd)
+                    execShell(activeConnection, cmd)
                 } catch (e: Exception) {
                     Log.w(TAG, "Shell error (attempt $attempt): ${e.message}")
                     connection = null
-                    if (attempt == 1) throw e else continue
+                    if (attempt == 1) throw e
+                    Thread.sleep(RECONNECT_DELAY_MS)
+                    continue
                 }
             }
             throw IllegalStateException("Unreachable")
@@ -135,6 +151,12 @@ class AdbController(private val context: Context) {
     fun keyEvent(code: Int) = shell("input keyevent $code")
 
     fun launchApp(activity: String) = shell("am start -n $activity")
+
+    /** Fixed action used by the Yatse UDP compatibility listener. */
+    fun wakeAndLaunchKodi() {
+        keyEvent(KEYCODE_WAKEUP)
+        launchApp(KODI_ACTIVITY)
+    }
 
     fun goHome() = shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME")
 
