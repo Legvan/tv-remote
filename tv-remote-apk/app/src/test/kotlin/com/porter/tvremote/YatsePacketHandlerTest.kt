@@ -42,6 +42,30 @@ class YatsePacketHandlerTest {
     }
 
     @Test
+    fun koreWakeOnLanPacketIsAcceptedAndDispatchesOnce() {
+        var dispatchCount = 0
+        val handler = YatsePacketHandler { dispatchCount++ }
+        val packet = wakeOnLanPacket(byteArrayOf(0x00, 0x11, 0x22, 0x33, 0x44, 0x55))
+
+        assertTrue(handler.handle(packet, packet.size))
+        assertEquals(1, dispatchCount)
+    }
+
+    @Test
+    fun malformedWakeOnLanPacketsAreIgnored() {
+        var dispatchCount = 0
+        val handler = YatsePacketHandler { dispatchCount++ }
+        val validPacket = wakeOnLanPacket(byteArrayOf(0x00, 0x11, 0x22, 0x33, 0x44, 0x55))
+        val invalidHeader = validPacket.copyOf().apply { this[0] = 0 }
+        val mismatchedMac = validPacket.copyOf().apply { this[lastIndex] = 0 }
+
+        assertFalse(handler.handle(invalidHeader, invalidHeader.size))
+        assertFalse(handler.handle(mismatchedMac, mismatchedMac.size))
+        assertFalse(handler.handle(validPacket, validPacket.size - 1))
+        assertEquals(0, dispatchCount)
+    }
+
+    @Test
     fun unrelatedPacketIsIgnored() {
         var dispatchCount = 0
         val handler = YatsePacketHandler { dispatchCount++ }
@@ -71,4 +95,12 @@ class YatsePacketHandlerTest {
         assertFalse(handler.handle(packet, packet.size + 1))
         assertEquals(0, dispatchCount)
     }
+
+    private fun wakeOnLanPacket(macAddress: ByteArray): ByteArray =
+        ByteArray(6 + 16 * macAddress.size).also { packet ->
+            packet.fill(0xff.toByte(), 0, 6)
+            for (offset in 6 until packet.size step macAddress.size) {
+                macAddress.copyInto(packet, offset)
+            }
+        }
 }

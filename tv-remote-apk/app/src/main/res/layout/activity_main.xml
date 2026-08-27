@@ -108,6 +108,40 @@
             android:textStyle="bold"
             android:layout_marginBottom="14dp" />
 
+        <!-- HTTP port (Yatse and Kore use the separate fixed UDP port 5600) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/http_port_label"
+                android:textColor="#9CA3AF"
+                android:textSize="14sp" />
+
+            <EditText
+                android:id="@+id/editHttpPort"
+                android:layout_width="120dp"
+                android:layout_height="48dp"
+                android:digits="0123456789"
+                android:inputType="number"
+                android:imeOptions="actionDone"
+                android:maxLength="5"
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:focusable="true"
+                android:nextFocusDown="@+id/btnStart" />
+
+        </LinearLayout>
+
         <!-- Divider -->
         <View
             android:layout_width="match_parent"
@@ -162,6 +196,7 @@
             android:stateListAnimator="@null"
             android:layout_marginEnd="12dp"
             android:focusable="true"
+            android:nextFocusUp="@id/editHttpPort"
             android:nextFocusRight="@+id/btnStop" />
 
         <Button
@@ -177,6 +212,7 @@
             android:stateListAnimator="@null"
             android:enabled="false"
             android:focusable="true"
+            android:nextFocusUp="@id/editHttpPort"
             android:nextFocusLeft="@id/btnStart" />
 
     </LinearLayout>

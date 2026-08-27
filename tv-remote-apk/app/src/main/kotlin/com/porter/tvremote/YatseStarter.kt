@@ -17,10 +17,10 @@ import java.net.StandardProtocolFamily
 import java.nio.channels.DatagramChannel
 
 /**
- * Receives the single-purpose UDP command sent by Yatse Remote Starter.
+ * Receives the single-purpose UDP commands sent by Yatse Remote Starter and Kore.
  *
- * Packet contents are used only to recognize [YATSE_START_MARKER]. They are never
- * passed to ADB or interpreted as commands.
+ * Packet contents are used only to recognize [YATSE_START_MARKER] or a standard
+ * Wake-on-LAN magic packet. They are never passed to ADB or interpreted as commands.
  */
 class YatseStarter(
     private val scope: CoroutineScope,
@@ -91,10 +91,10 @@ class YatseStarter(
                 listenerSocket.receive(packet)
                 try {
                     if (packetHandler.handle(packet.data, packet.length)) {
-                        Log.i(TAG, "Yatse start request received from ${packet.address.hostAddress}")
+                        Log.i(TAG, "UDP start request received from ${packet.address.hostAddress}")
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Yatse wake/Kodi action failed", e)
+                    Log.w(TAG, "UDP wake/Kodi action failed", e)
                 }
             }
         } catch (e: SocketException) {
@@ -130,7 +130,28 @@ internal class YatsePacketHandler(private val onTrigger: () -> Unit) {
     companion object {
         fun isStartPacket(data: ByteArray, length: Int): Boolean {
             if (length <= 0 || length > data.size) return false
-            return String(data, 0, length, Charsets.UTF_8).contains(YATSE_START_MARKER)
+            return isWakeOnLanPacket(data, length) ||
+                String(data, 0, length, Charsets.UTF_8).contains(YATSE_START_MARKER)
+        }
+
+        /** Kore sends the standard 6 x FF + 16 x target-MAC Wake-on-LAN payload. */
+        private fun isWakeOnLanPacket(data: ByteArray, length: Int): Boolean {
+            val macLength = 6
+            val headerLength = 6
+            val repetitions = 16
+            if (length != headerLength + repetitions * macLength) return false
+
+            for (index in 0 until headerLength) {
+                if (data[index] != 0xff.toByte()) return false
+            }
+
+            for (repetition in 1 until repetitions) {
+                val offset = headerLength + repetition * macLength
+                for (macIndex in 0 until macLength) {
+                    if (data[offset + macIndex] != data[headerLength + macIndex]) return false
+                }
+            }
+            return true
         }
     }
 }

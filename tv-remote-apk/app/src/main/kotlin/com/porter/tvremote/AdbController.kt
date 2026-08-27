@@ -152,7 +152,7 @@ class AdbController(private val context: Context) {
 
     fun launchApp(activity: String) = shell("am start -n $activity")
 
-    /** Fixed action used by the Yatse UDP compatibility listener. */
+    /** Fixed action used by the Yatse/Kore UDP compatibility listener. */
     fun wakeAndLaunchKodi() {
         keyEvent(KEYCODE_WAKEUP)
         launchApp(KODI_ACTIVITY)

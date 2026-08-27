@@ -20,7 +20,8 @@ import java.net.ServerSocket
  * Embedded Ktor CIO HTTP server.
  *
  * Exposes the same REST API as the Python/Flask remote_server.py so the existing
- * index.html works without modification. Runs on port 8080 (accessible on LAN).
+ * index.html works without modification. The listening port is configurable and
+ * defaults to 8081 so it can coexist with Kodi's common HTTP port 8080.
  *
  * Routes:
  *   GET  /                       → serve index.html from assets
@@ -35,7 +36,7 @@ import java.net.ServerSocket
 class HttpServer(
     private val context: Context,
     private val adb: AdbController,
-    val port: Int = 8080,
+    val port: Int = HttpServerSettings.DEFAULT_PORT,
 ) {
     companion object {
         private const val TAG = "HttpServer"
@@ -196,4 +197,29 @@ class HttpServer(
                 ?.hostAddress ?: "unknown"
         } catch (_: Exception) { "unknown" }
     }
+}
+
+/** Persisted HTTP-port configuration shared by the activity and foreground service. */
+internal object HttpServerSettings {
+    const val DEFAULT_PORT = 8081
+    private const val PREFERENCES_NAME = "tv_remote_settings"
+    private const val HTTP_PORT_KEY = "http_port"
+
+    fun load(context: Context): Int {
+        val stored = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getInt(HTTP_PORT_KEY, DEFAULT_PORT)
+        return stored.takeIf(::isValidPort) ?: DEFAULT_PORT
+    }
+
+    fun save(context: Context, port: Int) {
+        require(isValidPort(port)) { "Invalid HTTP port: $port" }
+        context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(HTTP_PORT_KEY, port)
+            .apply()
+    }
+
+    internal fun parsePort(value: String): Int? = value.toIntOrNull()?.takeIf(::isValidPort)
+
+    private fun isValidPort(port: Int): Boolean = port in 1..65535
 }

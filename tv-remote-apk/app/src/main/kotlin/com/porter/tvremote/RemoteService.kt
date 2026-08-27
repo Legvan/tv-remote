@@ -18,7 +18,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Foreground service that keeps the HTTP server and Yatse UDP starter alive indefinitely.
+ * Foreground service that keeps the HTTP server and UDP starter alive indefinitely.
  *
  * Lifecycle:
  *   START_SERVICE → onCreate() → startForeground() → HTTP/UDP start + ADB connect
@@ -69,14 +69,14 @@ class RemoteService : Service() {
         Log.i(TAG, "Service creating")
 
         adb        = AdbController(this)
-        httpServer = HttpServer(this, adb)
+        httpServer = HttpServer(this, adb, HttpServerSettings.load(this))
         yatseStarter = YatseStarter(serviceScope) { adb.wakeAndLaunchKodi() }
 
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Starting…", null))
         acquireLocks()
         // Independent from HTTP startup so a UDP bind failure cannot disable the web remote,
-        // and an HTTP startup failure cannot prevent Yatse compatibility.
+        // and an HTTP startup failure cannot prevent Yatse/Kore compatibility.
         yatseStarter.start()
         startServerAsync()
     }
@@ -113,7 +113,7 @@ class RemoteService : Service() {
                 Log.e(TAG, "Failed to start HTTP server", e)
             }
 
-            // 2. Connect to ADB loopback even when HTTP is unavailable. Yatse's UDP
+            // 2. Connect to ADB loopback even when HTTP is unavailable. The UDP
             // listener is independent and still needs the fixed wake/Kodi action.
             val adbOk = adb.connect()
             Log.i(TAG, "ADB loopback connected: $adbOk")
@@ -126,10 +126,12 @@ class RemoteService : Service() {
             val notificationText = if (httpRunning) {
                 "Running on $ip:${httpServer.port}"
             } else {
-                "Yatse starter on UDP ${YatseStarter.DEFAULT_PORT}; HTTP port ${httpServer.port} unavailable"
+                "Yatse/Kore starter on UDP ${YatseStarter.DEFAULT_PORT}; HTTP port ${httpServer.port} unavailable"
             }
             updateNotification(notificationText, adbOk)
-            broadcastStatus(serverRunning = httpRunning, adbConnected = adbOk, url = url)
+            // The foreground service and UDP listener are running even if HTTP could not bind.
+            // Report the service lifecycle accurately; a null URL communicates HTTP failure.
+            broadcastStatus(serverRunning = true, adbConnected = adbOk, url = url)
         }
     }
 
