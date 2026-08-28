@@ -27,6 +27,7 @@ class AdbController(private val context: Context) {
         const val ADB_PORT = 5555
         const val KEYCODE_WAKEUP = 224
         private const val RECONNECT_DELAY_MS = 250L
+        private const val KODI_PACKAGE = "org.xbmc.kodi"
         private const val KODI_ACTIVITY = "org.xbmc.kodi/.Splash"
 
         /** Maps URL-friendly names to Android activity strings (mirrors Python APPS dict). */
@@ -48,6 +49,12 @@ class AdbController(private val context: Context) {
 
     @Volatile private var connection: AdbConnection? = null
     private val lock = Any()
+    private val wakeAndLaunchKodiAction = WakeAndLaunchKodiAction(
+        wake = { keyEvent(KEYCODE_WAKEUP) },
+        launchKodi = { launchApp(KODI_ACTIVITY) },
+        isKodiForeground = { currentApp() == KODI_PACKAGE },
+        onWakeFailure = { Log.w(TAG, "ADB wake failed; continuing after hardware wake", it) },
+    )
 
     private val keyFile    = File(context.filesDir, "adbkey")
     private val pubKeyFile = File(context.filesDir, "adbkey.pub")
@@ -153,10 +160,7 @@ class AdbController(private val context: Context) {
     fun launchApp(activity: String) = shell("am start -n $activity")
 
     /** Fixed action used by the Yatse/Kore UDP compatibility listener. */
-    fun wakeAndLaunchKodi() {
-        keyEvent(KEYCODE_WAKEUP)
-        launchApp(KODI_ACTIVITY)
-    }
+    fun wakeAndLaunchKodi() = wakeAndLaunchKodiAction.run()
 
     fun goHome() = shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME")
 
@@ -211,4 +215,37 @@ class AdbController(private val context: Context) {
     }
 
     val isConnected: Boolean get() = connection != null
+}
+
+/**
+ * Lets Android finish leaving standby before asking ActivityManager to foreground Kodi.
+ * Kore's WOL packet may wake the hardware while loopback ADB is still reconnecting, so a
+ * failed ADB wake command must not prevent the later Kodi launch attempt. Kodi can also
+ * ANR while Android finishes its SCREEN_OFF broadcast; verify after that timeout window
+ * and relaunch once if Android returned to the launcher.
+ */
+internal class WakeAndLaunchKodiAction(
+    private val wake: () -> Unit,
+    private val launchKodi: () -> Unit,
+    private val isKodiForeground: () -> Boolean,
+    private val sleep: (Long) -> Unit = Thread::sleep,
+    private val onWakeFailure: (Exception) -> Unit = {},
+) {
+    companion object {
+        internal const val WAKE_SETTLE_DELAY_MS = 2_500L
+        internal const val KODI_VERIFY_DELAY_MS = 16_000L
+    }
+
+    fun run() {
+        try {
+            wake()
+        } catch (e: Exception) {
+            onWakeFailure(e)
+        }
+        sleep(WAKE_SETTLE_DELAY_MS)
+        launchKodi()
+        sleep(KODI_VERIFY_DELAY_MS)
+        val kodiIsForeground = runCatching { isKodiForeground() }.getOrDefault(false)
+        if (!kodiIsForeground) launchKodi()
+    }
 }
