@@ -12,7 +12,7 @@ Works with any Google TV or Android TV device — TCL, Sony, Philips, Hisense, N
 
 - **Auto-discovery** — scans your LAN via mDNS and ADB port scan, identifies model from TLS certificate (no pairing required)
 - **Web remote** — phone- and desktop-friendly UI accessible at `http://localhost:5052` on your machine or `http://<machine-ip>:5052` from any device on your LAN
-- **On-device APK** — install once on the TV; serves the remote UI on configurable port 8081 by default so any phone/tablet on your LAN can control the TV without a PC running
+- **On-device APK** — install once on the TV; serves the remote UI on port 8080 (configurable) so any phone/tablet on your LAN can control the TV without a PC running
 - **Yatse and Kore wake compatibility** — the on-device APK accepts Yatse Remote Starter and standard Wake-on-LAN packets on UDP port 5600 to wake the TV and launch Kodi
 - **Full controls** — D-pad, volume, media, channel (CH▲/CH▼ + 123 numpad), app shortcuts (YouTube, Netflix, Prime, Disney+, Spotify)
 - **Google Assistant** — launches via `am start` (most reliable method on Google TV)
@@ -85,7 +85,7 @@ Opens the browser automatically at `http://localhost:5052`. Use it from any devi
 ./tv key <keycode>            # raw Android keycode
 ./tv shell <cmd>              # raw ADB shell command
 ./tv discover                 # re-scan network for TV devices
-./tv start-server             # start the on-device HTTP server (port 8081 by default)
+./tv start-server             # start the on-device HTTP server (port 8080 by default)
 ```
 
 ### Re-run setup
@@ -119,7 +119,7 @@ All ADB communication is **direct TCP** (no system `adb` daemon needed — pure 
 
 ## On-device APK
 
-`tv-remote-apk/` is an Android/Kotlin app that runs **on the TV itself**, embedding a Ktor HTTP server on configurable port 8081 by default. Once installed, any phone or tablet on your LAN can open `http://<tv-ip>:8081` — no PC required.
+`tv-remote-apk/` is an Android/Kotlin app that runs **on the TV itself**, embedding a Ktor HTTP server on port 8080. Once installed, any phone or tablet on your LAN can open `http://<tv-ip>:8080` — no PC required. The port is configurable in the app if something else on the TV already uses 8080.
 
 - Auto-starts on boot via `BOOT_COMPLETED` receiver
 - Foreground service + WakeLock keeps the server alive
@@ -139,8 +139,8 @@ To start the server remotely from the CLI (e.g. if the app was killed):
    and leave it enabled. On Nvidia Shield, the separate USB debugging option is not
    required.
 2. Open **TV Remote** and press **Start Server** once. This starts both the web remote
-   and the UDP compatibility listener. Accept the one-time battery-optimization exemption;
-   the Shield otherwise stops the listener when it enters standby.
+   and the UDP compatibility listener. The app opens the battery-optimization screen the
+   first time — exempt **TV Remote** there, or the Shield stops the listener in standby.
 3. Accept the one-time authorization dialog. Android may label it **Allow USB
    debugging?** even though the connection is through Network debugging; select
    **Always allow** when available.
@@ -152,9 +152,9 @@ To start the server remotely from the CLI (e.g. if the app was killed):
 5. Put the TV in normal standby (not fully powered off) and use the remote's Wake on
    LAN action. The TV should wake and Kodi should launch.
 
-No computer or external ADB client is needed after installation. The web remote defaults
-to TCP `8081` so Kodi can keep its common TCP `8080` setting. You can change the web
-remote port in TV Remote before starting the service; Yatse and Kore always use UDP `5600`.
+No computer or external ADB client is needed after installation. If Kodi already serves
+HTTP on the TV's port `8080`, change the web remote's port in TV Remote before starting
+the service — `8081` is the obvious pick. Yatse and Kore always use UDP `5600`.
 
 The UDP protocols are unauthenticated and intended only for trusted local networks.
 The listener accepts no parameters and exposes only this fixed wake-and-launch action;
@@ -175,7 +175,7 @@ tv-remote/
 │   ├── tv.py               # CLI implementation
 │   ├── keygen.py           # ADB RSA key generator
 │   └── static/index.html   # Web remote UI
-├── tv-remote-apk/          # On-device Android APK (Ktor server on port 8081 by default)
+├── tv-remote-apk/          # On-device Android APK (Ktor server on port 8080 by default)
 └── docs/                   # Protocol notes, keycode reference
 ```
 

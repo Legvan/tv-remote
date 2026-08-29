@@ -1,13 +1,13 @@
 # TV Remote APK — Setup & Build Guide
 
 Self-hosted web remote that runs **on the TV itself**.  
-Anyone on the LAN opens `http://<TV-IP>:8081` by default and gets the full remote UI — no PC needed.
+Anyone on the LAN opens `http://<TV-IP>:8080` and gets the full remote UI — no PC needed.
 
 ## How it works
 
 ```
 Browser (phone/laptop/TV)
-    → HTTP :8081 by default (configurable)
+    → HTTP :8080 (configurable)
         → Ktor embedded server (foreground APK service)
             → cgutman/AdbLib connecting to 127.0.0.1:5555
                 → TV's own ADB daemon (grants "shell" privilege)
@@ -71,16 +71,17 @@ adb -s 192.168.1.50:5555 install -r app/build/outputs/apk/debug/app-debug.apk
    leave it enabled. On Nvidia Shield, do not enable the separate USB debugging option;
    Network debugging is sufficient and attached USB storage can remain connected.
 2. Open the **TV Remote** app from the TV launcher.
-3. Leave **HTTP web remote port** at its non-conflicting default `8081`, or choose another
-   free TCP port. Press **Start Server**. Despite its label, this starts both the HTTP
-   server and the Yatse/Kore UDP listener. The service auto-starts on subsequent boots.
-4. Accept the one-time battery-optimization exemption. Nvidia Shield otherwise stops
-   the foreground listener when the TV enters standby.
+3. Leave **HTTP web remote port** at its default `8080`, or choose another free TCP port
+   if something on the TV already uses it — Kodi's own HTTP server is the usual reason.
+   Press **Start Server**. Despite its label, this starts both the HTTP server and the
+   Yatse/Kore UDP listener. The service auto-starts on subsequent boots.
+4. The app opens the battery-optimization screen once. Exempt **TV Remote** there;
+   Nvidia Shield otherwise stops the foreground listener when the TV enters standby.
 5. **A dialog will appear on-screen:** "Allow USB Debugging from this computer?"
    This generic Android label is also used for Network debugging connections. Select
    **Allow** and enable **Always allow** when available.
 6. Confirm that the ADB indicator turns green.
-7. Optionally, open `http://<TV-IP>:8081` from another device on the same LAN, replacing
+7. Optionally, open `http://<TV-IP>:8080` from another device on the same LAN, replacing
    `<TV-IP>` with the TV's address. This HTTP remote is separate from Yatse support.
 
 > The RSA key pair is generated once and stored in the app's private storage.  
@@ -102,8 +103,9 @@ steps above.
 6. Expected result: the TV wakes and Kodi opens in the foreground.
 
 No computer or external ADB client is needed after installation. Network debugging on
-the TV must remain enabled. Kodi can keep its HTTP server on TCP `8080`; TV Remote uses
-TCP `8081` by default. The Yatse/Kore listener is independent on UDP `5600`.
+the TV must remain enabled. TV Remote defaults to TCP `8080`; if Kodi already serves HTTP
+there, move TV Remote to another port in the app. The Yatse/Kore listener is independent
+on UDP `5600` either way.
 
 The compatibility listener recognizes only the fixed `YatseStart-Xbmc` marker or a
 structurally valid standard Wake-on-LAN magic packet. Both invoke the same fixed action;
@@ -120,7 +122,7 @@ so keep the APK reachable only from a trusted local network.
 | Buttons do nothing | If the ADB indicator is red, re-enable Network debugging and restart the service |
 | HTTP remote unreachable | Confirm the URL and configured TCP port shown by TV Remote; stop the service before changing the port |
 | App remains stopped after Force stop | Android deliberately suppresses services and boot receivers after an explicit Force stop; open TV Remote and press Start Server once |
-| Listener disappears in standby | Open TV Remote, press Start Server, and accept the battery-optimization exemption when prompted |
+| Listener disappears in standby | Open TV Remote, press Start Server, then exempt TV Remote on the battery-optimization screen it opens |
 | Authorization dialog never appeared | Press Start; if needed, toggle Network debugging off and on, then try again. The dialog may still be labelled "Allow USB Debugging" |
 | Yatse or Kore does not wake the TV | Confirm the service is running, both devices are on the same LAN, the remote uses UDP port 5600, and the TV is in standby rather than fully powered off |
 
@@ -175,7 +177,7 @@ tv-remote-apk/
 
 ## Ports
 
-The HTTP server binds `0.0.0.0:8081` by default. The port can be changed in the app while the service is stopped.
+The HTTP server binds `0.0.0.0:8080` by default. The port can be changed in the app while the service is stopped.
 The original Python/Flask server uses port `5052` on the PC — no conflict since they run on different machines.
 The Yatse/Kore compatibility listener binds UDP port `5600` on the TV.
 
@@ -192,7 +194,7 @@ The Yatse/Kore compatibility listener binds UDP port `5600` on the TV.
 
 After installing the debug APK and approving loopback ADB once:
 
-1. Keep Kodi on TCP `8080` and TV Remote on its default TCP `8081`; confirm both are reachable.
+1. If Kodi uses TCP `8080`, move TV Remote to `8081` in the app; confirm both are reachable.
 2. Put the Shield in normal standby for several minutes, then test Yatse and Kore on UDP `5600`.
 3. Repeat after a cold reboot without opening TV Remote first.
 4. Repeat after updating the APK with `adb install -r`.
