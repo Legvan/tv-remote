@@ -1,6 +1,7 @@
 package com.porter.tvremote
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -20,8 +21,8 @@ import java.net.ServerSocket
  * Embedded Ktor CIO HTTP server.
  *
  * Exposes the same REST API as the Python/Flask remote_server.py so the existing
- * index.html works without modification. The listening port is configurable and
- * defaults to 8081 so it can coexist with Kodi's common HTTP port 8080.
+ * index.html works without modification. The listening port is configurable; it
+ * defaults to 8080 and can be moved if something else on the TV already uses it.
  *
  * Routes:
  *   GET  /                       → serve index.html from assets
@@ -199,21 +200,32 @@ class HttpServer(
     }
 }
 
+/** The app's single SharedPreferences file. */
+internal object Preferences {
+    private const val NAME = "tv_remote_settings"
+
+    fun of(context: Context): SharedPreferences =
+        context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+}
+
 /** Persisted HTTP-port configuration shared by the activity and foreground service. */
 internal object HttpServerSettings {
-    const val DEFAULT_PORT = 8081
-    private const val PREFERENCES_NAME = "tv_remote_settings"
+    /**
+     * Unchanged from the versions already installed in the field: existing users keep
+     * their bookmarks working after an update. Anyone whose port 8080 is taken — Kodi
+     * being the usual culprit — can pick another one in the app.
+     */
+    const val DEFAULT_PORT = 8080
     private const val HTTP_PORT_KEY = "http_port"
 
     fun load(context: Context): Int {
-        val stored = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .getInt(HTTP_PORT_KEY, DEFAULT_PORT)
+        val stored = Preferences.of(context).getInt(HTTP_PORT_KEY, DEFAULT_PORT)
         return stored.takeIf(::isValidPort) ?: DEFAULT_PORT
     }
 
     fun save(context: Context, port: Int) {
         require(isValidPort(port)) { "Invalid HTTP port: $port" }
-        context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        Preferences.of(context)
             .edit()
             .putInt(HTTP_PORT_KEY, port)
             .apply()

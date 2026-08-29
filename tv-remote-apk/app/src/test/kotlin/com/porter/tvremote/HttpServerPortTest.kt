@@ -10,8 +10,8 @@ import java.net.ServerSocket
 class HttpServerPortTest {
 
     @Test
-    fun defaultAvoidsKodiPort() {
-        assertEquals(8081, HttpServerSettings.DEFAULT_PORT)
+    fun defaultKeepsThePortAlreadyInTheField() {
+        assertEquals(8080, HttpServerSettings.DEFAULT_PORT)
     }
 
     @Test
