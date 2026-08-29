@@ -2,6 +2,7 @@ package com.porter.tvremote
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.Inet4Address
@@ -94,6 +95,54 @@ class YatsePacketHandlerTest {
         assertFalse(handler.handle(packet, 0))
         assertFalse(handler.handle(packet, packet.size + 1))
         assertEquals(0, dispatchCount)
+    }
+
+    @Test
+    fun koreWakeOnLanPacketForThisDeviceIsAccepted() {
+        var dispatchCount = 0
+        val handler = YatsePacketHandler({ setOf("001122334455") }) { dispatchCount++ }
+        val packet = wakeOnLanPacket(byteArrayOf(0x00, 0x11, 0x22, 0x33, 0x44, 0x55))
+
+        assertTrue(handler.handle(packet, packet.size))
+        assertEquals(1, dispatchCount)
+    }
+
+    @Test
+    fun wakeOnLanPacketAimedAtAnotherMachineIsIgnored() {
+        var dispatchCount = 0
+        val handler = YatsePacketHandler({ setOf("aabbccddeeff") }) { dispatchCount++ }
+        val packet = wakeOnLanPacket(byteArrayOf(0x00, 0x11, 0x22, 0x33, 0x44, 0x55))
+
+        assertFalse(handler.handle(packet, packet.size))
+        assertEquals(0, dispatchCount)
+    }
+
+    @Test
+    fun wakeOnLanPacketIsAcceptedWhenAndroidHidesLocalMacAddresses() {
+        var dispatchCount = 0
+        val handler = YatsePacketHandler({ emptySet() }) { dispatchCount++ }
+        val packet = wakeOnLanPacket(byteArrayOf(0x00, 0x11, 0x22, 0x33, 0x44, 0x55))
+
+        assertTrue(handler.handle(packet, packet.size))
+        assertEquals(1, dispatchCount)
+    }
+
+    @Test
+    fun yatseMarkerIsNotSubjectToTheMacCheck() {
+        var dispatchCount = 0
+        val handler = YatsePacketHandler({ setOf("aabbccddeeff") }) { dispatchCount++ }
+        val packet = YATSE_START_MARKER.toByteArray()
+
+        assertTrue(handler.handle(packet, packet.size))
+        assertEquals(1, dispatchCount)
+    }
+
+    @Test
+    fun wakeOnLanTargetMacIsReadFromThePayload() {
+        val packet = wakeOnLanPacket(byteArrayOf(0x00, 0x11, 0x22, 0x33, 0x44.toByte(), 0xff.toByte()))
+
+        assertEquals("0011223344ff", YatsePacketHandler.wakeOnLanTargetMac(packet, packet.size))
+        assertNull(YatsePacketHandler.wakeOnLanTargetMac("nope".toByteArray(), 4))
     }
 
     private fun wakeOnLanPacket(macAddress: ByteArray): ByteArray =
