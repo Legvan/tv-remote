@@ -27,7 +27,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(__file__))
-from adb_client import TVClient
+from adb_client import TVClient, require_config
 
 APPS = {
     'netflix': 'com.netflix.ninja/.MainActivity',
@@ -61,9 +61,12 @@ def main():
     cmd = args[0]
 
     if cmd == 'discover':
+        # Network scan works without a configured TV — that is the point of it.
         import discover as _d
         _d.main()
         return
+
+    require_config()
 
     if cmd == 'connect':
         with TVClient() as tv:

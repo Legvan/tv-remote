@@ -10,7 +10,7 @@ from flask import Flask, jsonify, request, send_from_directory
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from adb_client import TVClient, TV_HOST, TV_PORT, TV_NAME
+from adb_client import TVClient, TV_HOST, TV_PORT, TV_NAME, require_config
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 app = Flask(__name__, static_folder=STATIC)
@@ -125,6 +125,8 @@ PORT = 5052
 
 
 if __name__ == '__main__':
+    require_config()
+
     import socket as _socket
     try:
         _s = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)

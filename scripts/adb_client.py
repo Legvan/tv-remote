@@ -1,9 +1,13 @@
 """ADB connection wrapper for Android TV / Google TV.
 
 Reads host, port, and display name from config.json at the project root.
-All values fall back to sensible defaults if config.json is absent.
+All values fall back to sensible defaults if config.json is absent, and
+importing this module never aborts: the setup wizard connects to the TV to
+read its model *before* it writes config.json.  Entry points that do need a
+configured TV call require_config() themselves.
 """
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -21,12 +25,6 @@ def _load_config() -> dict:
 
 _cfg = _load_config()
 
-if not _cfg and not _CONFIG_PATH.exists():
-    # config.json is written by ./install — guide the user if it's missing
-    import sys as _sys
-    print("ERROR: config.json not found. Run './install' first to set up your TV.")
-    _sys.exit(1)
-
 TV_HOST = _cfg.get('host', '')
 TV_PORT = _cfg.get('port', 5555)
 TV_NAME = _cfg.get('name', 'Android TV')
@@ -34,6 +32,22 @@ TV_NAME = _cfg.get('name', 'Android TV')
 KEY_PATH        = Path.home() / '.android' / 'adbkey'
 CONNECT_TIMEOUT = 9.0
 AUTH_TIMEOUT    = 10.0   # seconds to wait for the RSA-key prompt on the TV screen
+
+
+def require_config() -> None:
+    """Exit with a setup hint unless config.json names a TV host.
+
+    Used by the CLI and the web GUI, which have no TV to talk to without it.
+    install.py deliberately does not call this — it runs before config.json
+    exists and passes the host explicitly to TVClient.
+    """
+    if TV_HOST:
+        return
+    if _CONFIG_PATH.exists():
+        print(f"ERROR: no TV host in {_CONFIG_PATH}. Re-run './install' to set up your TV.")
+    else:
+        print("ERROR: config.json not found. Run './install' first to set up your TV.")
+    sys.exit(1)
 
 
 def load_signer():
