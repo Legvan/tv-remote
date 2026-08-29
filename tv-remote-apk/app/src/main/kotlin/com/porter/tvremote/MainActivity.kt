@@ -5,9 +5,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -29,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adbDot: View
     private lateinit var btnStart: Button
     private lateinit var btnStop: Button
+    private lateinit var editHttpPort: EditText
 
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -53,6 +58,8 @@ class MainActivity : AppCompatActivity() {
         adbDot      = findViewById(R.id.adbDot)
         btnStart    = findViewById(R.id.btnStart)
         btnStop     = findViewById(R.id.btnStop)
+        editHttpPort = findViewById(R.id.editHttpPort)
+        editHttpPort.setText(HttpServerSettings.load(this).toString())
 
         btnStart.setOnClickListener { startServer() }
         btnStop.setOnClickListener  { stopServer()  }
@@ -107,7 +114,15 @@ class MainActivity : AppCompatActivity() {
     // ─── Service control ─────────────────────────────────────────────────────
 
     private fun startServer() {
+        val port = HttpServerSettings.parsePort(editHttpPort.text.toString())
+        if (port == null) {
+            editHttpPort.error = getString(R.string.http_port_invalid)
+            editHttpPort.requestFocus()
+            return
+        }
+        HttpServerSettings.save(this, port)
         ContextCompat.startForegroundService(this, Intent(this, RemoteService::class.java))
+        requestBatteryOptimizationExemption()
         updateUi(running = true, adbOk = false, url = null)
         btnStart.isEnabled = false
         btnStop.isEnabled  = true
@@ -123,6 +138,21 @@ class MainActivity : AppCompatActivity() {
         btnStart.requestFocus()
     }
 
+    /** Shield app-idle policy otherwise stops the UDP listener when the TV enters standby. */
+    private fun requestBatteryOptimizationExemption() {
+        val powerManager = getSystemService(PowerManager::class.java)
+        if (powerManager.isIgnoringBatteryOptimizations(packageName)) return
+
+        val packageUri = Uri.parse("package:$packageName")
+        val directRequest = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, packageUri)
+        runCatching { startActivity(directRequest) }
+            .onFailure {
+                runCatching {
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                }
+            }
+    }
+
     // ─── UI updates ──────────────────────────────────────────────────────────
 
     private fun updateUi(running: Boolean, adbOk: Boolean, url: String?) {
@@ -130,9 +160,13 @@ class MainActivity : AppCompatActivity() {
             tvStatus.text = getString(R.string.status_running)
             statusDot.setBackgroundResource(R.drawable.shape_status_dot)
             statusDot.background.setTint(Color.parseColor("#34C759"))
-            tvUrl.text    = url ?: "http://<TV-IP>:8080"
+            tvUrl.text = url ?: getString(
+                R.string.http_unavailable,
+                HttpServerSettings.load(this)
+            )
             btnStart.isEnabled = false
             btnStop.isEnabled  = true
+            editHttpPort.isEnabled = false
         } else {
             tvStatus.text = getString(R.string.status_stopped)
             statusDot.setBackgroundResource(R.drawable.shape_status_dot)
@@ -140,6 +174,7 @@ class MainActivity : AppCompatActivity() {
             tvUrl.text    = "—"
             btnStart.isEnabled = true
             btnStop.isEnabled  = false
+            editHttpPort.isEnabled = true
         }
 
         tvAdbStatus.text = if (adbOk) {

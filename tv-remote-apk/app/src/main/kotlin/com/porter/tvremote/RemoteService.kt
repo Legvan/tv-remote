@@ -18,11 +18,11 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Foreground service that keeps the HTTP server alive indefinitely.
+ * Foreground service that keeps the HTTP server and UDP starter alive indefinitely.
  *
  * Lifecycle:
- *   START_SERVICE → onCreate() → startForeground() → ADB connect + HTTP start
- *   STOP_SERVICE  → onDestroy() → HTTP stop + ADB disconnect + lock release
+ *   START_SERVICE → onCreate() → startForeground() → HTTP/UDP start + ADB connect
+ *   STOP_SERVICE  → onDestroy() → HTTP/UDP stop + ADB disconnect + lock release
  *
  * Broadcasts:
  *   ACTION_STATUS_UPDATE — sent when ADB / server state changes; received by MainActivity.
@@ -57,6 +57,7 @@ class RemoteService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private lateinit var adb: AdbController
     private lateinit var httpServer: HttpServer
+    private lateinit var yatseStarter: YatseStarter
 
     private var wakeLock:  PowerManager.WakeLock? = null
     private var wifiLock:  WifiManager.WifiLock? = null
@@ -68,11 +69,15 @@ class RemoteService : Service() {
         Log.i(TAG, "Service creating")
 
         adb        = AdbController(this)
-        httpServer = HttpServer(this, adb)
+        httpServer = HttpServer(this, adb, HttpServerSettings.load(this))
+        yatseStarter = YatseStarter(serviceScope) { adb.wakeAndLaunchKodi() }
 
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Starting…", null))
         acquireLocks()
+        // Independent from HTTP startup so a UDP bind failure cannot disable the web remote,
+        // and an HTTP startup failure cannot prevent Yatse/Kore compatibility.
+        yatseStarter.start()
         startServerAsync()
     }
 
@@ -84,6 +89,7 @@ class RemoteService : Service() {
     override fun onDestroy() {
         Log.i(TAG, "Service destroying")
         currentStatus = null
+        yatseStarter.stop()
         httpServer.stop()
         adb.disconnect()
         serviceScope.cancel()
@@ -98,25 +104,33 @@ class RemoteService : Service() {
     private fun startServerAsync() {
         serviceScope.launch {
             // 1. Start HTTP server (non-blocking, Ktor starts its own coroutines)
+            var httpRunning = false
             try {
                 httpServer.start()
+                httpRunning = true
                 Log.i(TAG, "HTTP server running on port ${httpServer.port}")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start HTTP server", e)
-                broadcastStatus(serverRunning = false, adbConnected = false, url = null)
-                return@launch
             }
 
-            // 2. Connect to ADB loopback
+            // 2. Connect to ADB loopback even when HTTP is unavailable. The UDP
+            // listener is independent and still needs the fixed wake/Kodi action.
             val adbOk = adb.connect()
             Log.i(TAG, "ADB loopback connected: $adbOk")
 
             // 3. Get LAN IP for notification / broadcast
             val ip = getLanIp()
-            val url = "http://$ip:${httpServer.port}"
+            val url = if (httpRunning) "http://$ip:${httpServer.port}" else null
 
             // 4. Update notification and broadcast to MainActivity
-            updateNotification("Running on $ip:${httpServer.port}", adbOk)
+            val notificationText = if (httpRunning) {
+                "Running on $ip:${httpServer.port}"
+            } else {
+                "Yatse/Kore starter on UDP ${YatseStarter.DEFAULT_PORT}; HTTP port ${httpServer.port} unavailable"
+            }
+            updateNotification(notificationText, adbOk)
+            // The foreground service and UDP listener are running even if HTTP could not bind.
+            // Report the service lifecycle accurately; a null URL communicates HTTP failure.
             broadcastStatus(serverRunning = true, adbConnected = adbOk, url = url)
         }
     }
