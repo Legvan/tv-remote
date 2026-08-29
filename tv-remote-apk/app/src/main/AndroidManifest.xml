@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!--
+      Android 14+ (API 34) rejects a "connectedDevice" foreground service unless the app
+      also holds one of the device-connectivity permissions. Without it, RemoteService
+      dies with SecurityException on start. We hold a WifiLock for the whole session,
+      so CHANGE_WIFI_STATE is the honest one to declare.
+    -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
     <!-- Keep CPU/WiFi alive while server is running -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
