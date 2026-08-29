@@ -70,7 +70,8 @@ class RemoteService : Service() {
 
         adb        = AdbController(this)
         httpServer = HttpServer(this, adb, HttpServerSettings.load(this))
-        yatseStarter = YatseStarter(serviceScope) { adb.wakeAndLaunchKodi() }
+        val kodiAction = wakeAndLaunchKodiAction()
+        yatseStarter = YatseStarter(serviceScope) { kodiAction.run() }
 
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Starting…", null))
@@ -134,6 +135,17 @@ class RemoteService : Service() {
             broadcastStatus(serverRunning = true, adbConnected = adbOk, url = url)
         }
     }
+
+    /**
+     * The one action the Yatse/Kore listener can invoke. It lives here rather than in
+     * AdbController so that class stays a generic ADB wrapper with no favourite app.
+     */
+    private fun wakeAndLaunchKodiAction() = WakeAndLaunchKodiAction(
+        wake = { adb.keyEvent(AdbController.KEYCODE_WAKEUP) },
+        launchKodi = { adb.launchApp(AdbController.KODI_ACTIVITY) },
+        isKodiForeground = { adb.currentApp() == AdbController.KODI_PACKAGE },
+        onWakeFailure = { Log.w(TAG, "ADB wake failed; continuing after hardware wake", it) },
+    )
 
     // ─── Notifications ────────────────────────────────────────────────────────
 
