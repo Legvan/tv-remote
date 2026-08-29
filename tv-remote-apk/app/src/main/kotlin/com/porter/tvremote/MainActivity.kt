@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
-import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -122,7 +121,7 @@ class MainActivity : AppCompatActivity() {
         }
         HttpServerSettings.save(this, port)
         ContextCompat.startForegroundService(this, Intent(this, RemoteService::class.java))
-        requestBatteryOptimizationExemption()
+        offerBatteryOptimizationExemption()
         updateUi(running = true, adbOk = false, url = null)
         btnStart.isEnabled = false
         btnStop.isEnabled  = true
@@ -138,19 +137,29 @@ class MainActivity : AppCompatActivity() {
         btnStart.requestFocus()
     }
 
-    /** Shield app-idle policy otherwise stops the UDP listener when the TV enters standby. */
-    private fun requestBatteryOptimizationExemption() {
+    /**
+     * Shield app-idle policy otherwise stops the UDP listener when the TV enters standby.
+     *
+     * We open the battery-optimization list and let the user exempt the app there.
+     * The direct "allow?" dialog (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) would be
+     * one tap shorter, but it needs REQUEST_IGNORE_BATTERY_OPTIMIZATIONS — a permission
+     * Google Play restricts to a short list of app categories a TV remote is not on.
+     *
+     * Shown once. Nagging on every Start Server press would be worse than the problem.
+     */
+    private fun offerBatteryOptimizationExemption() {
         val powerManager = getSystemService(PowerManager::class.java)
         if (powerManager.isIgnoringBatteryOptimizations(packageName)) return
+        if (!BatteryOptimizationPrompt.pending(this)) return
 
-        val packageUri = Uri.parse("package:$packageName")
-        val directRequest = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, packageUri)
-        runCatching { startActivity(directRequest) }
-            .onFailure {
-                runCatching {
-                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                }
-            }
+        runCatching {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        }.onSuccess {
+            BatteryOptimizationPrompt.markShown(this)
+        }.onFailure {
+            // Some TV builds ship no battery-optimization screen at all. Nothing to do.
+            BatteryOptimizationPrompt.markShown(this)
+        }
     }
 
     // ─── UI updates ──────────────────────────────────────────────────────────
@@ -188,5 +197,16 @@ class MainActivity : AppCompatActivity() {
         tvAdbStatus.setTextColor(Color.parseColor(adbColor))
         adbDot.setBackgroundResource(R.drawable.shape_status_dot)
         adbDot.background.setTint(Color.parseColor(adbColor))
+    }
+}
+
+/** Remembers that the user was sent to the battery-optimization screen once already. */
+private object BatteryOptimizationPrompt {
+    private const val KEY = "battery_prompt_shown"
+
+    fun pending(context: Context): Boolean = !Preferences.of(context).getBoolean(KEY, false)
+
+    fun markShown(context: Context) {
+        Preferences.of(context).edit().putBoolean(KEY, true).apply()
     }
 }
