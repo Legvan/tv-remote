@@ -1,0 +1,1 @@
+v1.5: Fixes a crash on Android 14 and newer, where the server failed to start because the manifest was missing a permission that the connectedDevice service type requires. Reported by a user on Android 14; the app was unaffected on Android 12 and older. No other changes to the remote.
