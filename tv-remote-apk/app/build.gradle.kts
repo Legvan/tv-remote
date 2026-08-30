@@ -16,19 +16,32 @@ android {
         versionName = "1.5"
     }
 
+    val releaseKeystorePath = providers.gradleProperty("TV_REMOTE_KEYSTORE_PATH").orNull
+    val releaseKeystorePassword = providers.gradleProperty("TV_REMOTE_KEYSTORE_PASSWORD").orNull
+    val releaseKeyAlias = providers.gradleProperty("TV_REMOTE_KEY_ALIAS").orNull
+    val releaseKeyPassword = providers.gradleProperty("TV_REMOTE_KEY_PASSWORD").orNull
+    val hasReleaseSigning = listOf(
+        releaseKeystorePath,
+        releaseKeystorePassword,
+        releaseKeyAlias,
+        releaseKeyPassword,
+    ).all { it != null }
+
     signingConfigs {
-        create("release") {
-            storeFile = file(providers.gradleProperty("TV_REMOTE_KEYSTORE_PATH").get())
-            storePassword = providers.gradleProperty("TV_REMOTE_KEYSTORE_PASSWORD").get()
-            keyAlias = providers.gradleProperty("TV_REMOTE_KEY_ALIAS").get()
-            keyPassword = providers.gradleProperty("TV_REMOTE_KEY_PASSWORD").get()
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.findByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
