@@ -4,6 +4,8 @@
     <!-- Network: bind HTTP server socket + connect ADB loopback -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Satisfies the connectedDevice foreground-service prerequisite on Android 14+ -->
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!--
       Android 14+ (API 34) rejects a "connectedDevice" foreground service unless the app
@@ -15,6 +17,8 @@
 
     <!-- Keep CPU/WiFi alive while server is running -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- The user can exempt this always-on LAN listener from Doze/app-idle killing. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- connectedDevice: correct type for a persistent local server + ADB socket (Play Store compliant) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />

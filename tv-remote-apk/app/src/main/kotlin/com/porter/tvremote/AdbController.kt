@@ -25,6 +25,10 @@ class AdbController(private val context: Context) {
         private const val TAG = "AdbController"
         const val ADB_HOST = "127.0.0.1"
         const val ADB_PORT = 5555
+        const val KEYCODE_WAKEUP = 224
+        private const val RECONNECT_DELAY_MS = 250L
+        private const val KODI_PACKAGE = "org.xbmc.kodi"
+        private const val KODI_ACTIVITY = "org.xbmc.kodi/.Splash"
 
         /** Maps URL-friendly names to Android activity strings (mirrors Python APPS dict). */
         val APPS = mapOf(
@@ -34,7 +38,7 @@ class AdbController(private val context: Context) {
             "disney"   to "com.disney.disneyplus/.MainActivity",
             "settings" to "com.android.settings/.Settings",
             "spotify"  to "com.spotify.tv.android/.SpotifyTVActivity",
-            "kodi"     to "org.xbmc.kodi/.Splash",
+            "kodi"     to KODI_ACTIVITY,
         )
 
         /** AdbLib Base64 adapter using Android's built-in Base64 codec. */
@@ -45,6 +49,12 @@ class AdbController(private val context: Context) {
 
     @Volatile private var connection: AdbConnection? = null
     private val lock = Any()
+    private val wakeAndLaunchKodiAction = WakeAndLaunchKodiAction(
+        wake = { keyEvent(KEYCODE_WAKEUP) },
+        launchKodi = { launchApp(KODI_ACTIVITY) },
+        isKodiForeground = { currentApp() == KODI_PACKAGE },
+        onWakeFailure = { Log.w(TAG, "ADB wake failed; continuing after hardware wake", it) },
+    )
 
     private val keyFile    = File(context.filesDir, "adbkey")
     private val pubKeyFile = File(context.filesDir, "adbkey.pub")
@@ -99,16 +109,29 @@ class AdbController(private val context: Context) {
     fun shell(cmd: String): String {
         synchronized(lock) {
             for (attempt in 0..1) {
-                val conn = connection ?: if (attempt == 0 && connect()) connection!! else
-                    throw IllegalStateException(
-                        "ADB not connected — enable ADB over network in Developer Options"
-                    )
+                var conn = connection
+                if (conn == null) {
+                    if (!connect()) {
+                        if (attempt == 1) {
+                            throw IllegalStateException(
+                                "ADB not connected — enable ADB over network in Developer Options"
+                            )
+                        }
+                        Thread.sleep(RECONNECT_DELAY_MS)
+                        continue
+                    }
+                    conn = connection ?: throw IllegalStateException("ADB connection was not retained")
+                }
+                val activeConnection = conn
+                    ?: throw IllegalStateException("ADB connection was not retained")
                 return try {
-                    execShell(conn, cmd)
+                    execShell(activeConnection, cmd)
                 } catch (e: Exception) {
                     Log.w(TAG, "Shell error (attempt $attempt): ${e.message}")
                     connection = null
-                    if (attempt == 1) throw e else continue
+                    if (attempt == 1) throw e
+                    Thread.sleep(RECONNECT_DELAY_MS)
+                    continue
                 }
             }
             throw IllegalStateException("Unreachable")
@@ -135,6 +158,9 @@ class AdbController(private val context: Context) {
     fun keyEvent(code: Int) = shell("input keyevent $code")
 
     fun launchApp(activity: String) = shell("am start -n $activity")
+
+    /** Fixed action used by the Yatse/Kore UDP compatibility listener. */
+    fun wakeAndLaunchKodi() = wakeAndLaunchKodiAction.run()
 
     fun goHome() = shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME")
 
@@ -189,4 +215,37 @@ class AdbController(private val context: Context) {
     }
 
     val isConnected: Boolean get() = connection != null
+}
+
+/**
+ * Lets Android finish leaving standby before asking ActivityManager to foreground Kodi.
+ * Kore's WOL packet may wake the hardware while loopback ADB is still reconnecting, so a
+ * failed ADB wake command must not prevent the later Kodi launch attempt. Kodi can also
+ * ANR while Android finishes its SCREEN_OFF broadcast; verify after that timeout window
+ * and relaunch once if Android returned to the launcher.
+ */
+internal class WakeAndLaunchKodiAction(
+    private val wake: () -> Unit,
+    private val launchKodi: () -> Unit,
+    private val isKodiForeground: () -> Boolean,
+    private val sleep: (Long) -> Unit = Thread::sleep,
+    private val onWakeFailure: (Exception) -> Unit = {},
+) {
+    companion object {
+        internal const val WAKE_SETTLE_DELAY_MS = 2_500L
+        internal const val KODI_VERIFY_DELAY_MS = 16_000L
+    }
+
+    fun run() {
+        try {
+            wake()
+        } catch (e: Exception) {
+            onWakeFailure(e)
+        }
+        sleep(WAKE_SETTLE_DELAY_MS)
+        launchKodi()
+        sleep(KODI_VERIFY_DELAY_MS)
+        val kodiIsForeground = runCatching { isKodiForeground() }.getOrDefault(false)
+        if (!kodiIsForeground) launchKodi()
+    }
 }
