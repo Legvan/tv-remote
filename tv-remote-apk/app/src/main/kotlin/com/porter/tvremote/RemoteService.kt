@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
@@ -149,7 +150,10 @@ class RemoteService : Service() {
 
     // ─── Notifications ────────────────────────────────────────────────────────
 
+    /** Notification channels only exist from API 26; below that the service needs none. */
     private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
         val channel = NotificationChannel(
             NOTIF_CHANNEL_ID,
             getString(R.string.notif_channel_name),

@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.porter.tvremote"
-        minSdk = 26
+        minSdk = 25
         targetSdk = 36
         versionCode = 7
         versionName = "1.6"
