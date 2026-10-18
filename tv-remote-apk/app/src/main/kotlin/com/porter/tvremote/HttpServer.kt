@@ -229,6 +229,7 @@ internal object HttpServerSettings {
      */
     const val DEFAULT_PORT = 8080
     private const val HTTP_PORT_KEY = "http_port"
+    private val VALID_PORTS = 1..65535
 
     fun load(context: Context): Int {
         val stored = Preferences.of(context).getInt(HTTP_PORT_KEY, DEFAULT_PORT)
@@ -245,5 +246,15 @@ internal object HttpServerSettings {
 
     internal fun parsePort(value: String): Int? = value.toIntOrNull()?.takeIf(::isValidPort)
 
-    private fun isValidPort(port: Int): Boolean = port in 1..65535
+    /**
+     * Value for the −/+ buttons next to the port field, which exist so the port can be
+     * changed with a TV remote alone. Steps from whatever the field holds and never leaves
+     * the valid range; text that is not a number at all starts over from [DEFAULT_PORT].
+     */
+    internal fun stepPort(value: String, delta: Int): Int {
+        val current = value.toIntOrNull()?.coerceIn(VALID_PORTS) ?: return DEFAULT_PORT
+        return (current + delta).coerceIn(VALID_PORTS)
+    }
+
+    private fun isValidPort(port: Int): Boolean = port in VALID_PORTS
 }

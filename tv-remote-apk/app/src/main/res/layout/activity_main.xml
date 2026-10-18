@@ -108,7 +108,8 @@
             android:textStyle="bold"
             android:layout_marginBottom="14dp" />
 
-        <!-- HTTP port (Yatse and Kore use the separate fixed UDP port 5600) -->
+        <!-- HTTP port (Yatse and Kore use the separate fixed UDP port 5600).
+             −/+ step the port so it can be changed with a remote, without a keyboard. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -124,9 +125,28 @@
                 android:textColor="#9CA3AF"
                 android:textSize="14sp" />
 
+            <Button
+                android:id="@+id/btnPortDown"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="@string/http_port_step_down"
+                android:contentDescription="@string/http_port_step_down_desc"
+                android:textColor="#D1D5DB"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:background="@drawable/shape_btn_secondary"
+                android:stateListAnimator="@null"
+                android:layout_marginEnd="8dp"
+                android:focusable="true"
+                android:nextFocusRight="@+id/editHttpPort"
+                android:nextFocusDown="@+id/btnStart" />
+
             <EditText
                 android:id="@+id/editHttpPort"
-                android:layout_width="120dp"
+                android:layout_width="100dp"
                 android:layout_height="48dp"
                 android:digits="0123456789"
                 android:inputType="number"
@@ -138,7 +158,28 @@
                 android:textSize="16sp"
                 android:gravity="center"
                 android:focusable="true"
-                android:nextFocusDown="@+id/btnStart" />
+                android:nextFocusLeft="@id/btnPortDown"
+                android:nextFocusRight="@+id/btnPortUp"
+                android:nextFocusDown="@id/btnStart" />
+
+            <Button
+                android:id="@+id/btnPortUp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="@string/http_port_step_up"
+                android:contentDescription="@string/http_port_step_up_desc"
+                android:textColor="#D1D5DB"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:background="@drawable/shape_btn_secondary"
+                android:stateListAnimator="@null"
+                android:layout_marginStart="8dp"
+                android:focusable="true"
+                android:nextFocusLeft="@id/editHttpPort"
+                android:nextFocusDown="@id/btnStart" />
 
         </LinearLayout>
 

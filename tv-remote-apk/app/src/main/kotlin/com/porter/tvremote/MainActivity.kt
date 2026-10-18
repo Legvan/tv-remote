@@ -8,6 +8,8 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.InputDevice
+import android.view.KeyEvent
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -20,7 +22,8 @@ import androidx.core.view.WindowInsetsCompat
 /**
  * Launcher activity — shows server status (URL, ADB state) and Start/Stop buttons.
  *
- * Designed for D-pad navigation on Android TV (two focusable buttons, no touch required).
+ * Designed for D-pad navigation on Android TV (no touch or keyboard required: the HTTP port
+ * has −/+ buttons next to its text field).
  * Status updates arrive via LocalBroadcast from RemoteService.
  */
 class MainActivity : AppCompatActivity() {
@@ -33,6 +36,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStart: Button
     private lateinit var btnStop: Button
     private lateinit var editHttpPort: EditText
+    private lateinit var btnPortDown: Button
+    private lateinit var btnPortUp: Button
 
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -55,10 +60,15 @@ class MainActivity : AppCompatActivity() {
         btnStart    = findViewById(R.id.btnStart)
         btnStop     = findViewById(R.id.btnStop)
         editHttpPort = findViewById(R.id.editHttpPort)
+        btnPortDown  = findViewById(R.id.btnPortDown)
+        btnPortUp    = findViewById(R.id.btnPortUp)
         editHttpPort.setText(HttpServerSettings.load(this).toString())
 
         btnStart.setOnClickListener { startServer() }
         btnStop.setOnClickListener  { stopServer()  }
+        btnPortDown.setOnClickListener { stepPort(-1) }
+        btnPortUp.setOnClickListener   { stepPort(+1) }
+        editHttpPort.setOnKeyListener { _, keyCode, event -> jumpToPortStepper(keyCode, event) }
 
         // Default focus to Start button on TV D-pad
         btnStart.requestFocus()
@@ -103,6 +113,29 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         unregisterReceiver(statusReceiver)
+    }
+
+    // ─── HTTP port ───────────────────────────────────────────────────────────
+
+    private fun stepPort(delta: Int) {
+        val port = HttpServerSettings.stepPort(editHttpPort.text.toString(), delta)
+        editHttpPort.setText(port.toString())
+        editHttpPort.error = null
+    }
+
+    /**
+     * Remote left/right on the port field goes straight to −/+. Left alone, the first press
+     * would only collapse the select-all-on-focus highlight and look like nothing happened.
+     * Full keyboards (and phone IMEs) keep normal cursor movement.
+     */
+    private fun jumpToPortStepper(keyCode: Int, event: KeyEvent): Boolean {
+        val target = when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT  -> btnPortDown
+            KeyEvent.KEYCODE_DPAD_RIGHT -> btnPortUp
+            else -> return false
+        }
+        if (event.device?.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC) return false
+        return event.action == KeyEvent.ACTION_DOWN && target.requestFocus()
     }
 
     // ─── Service control ─────────────────────────────────────────────────────
@@ -192,7 +225,7 @@ class MainActivity : AppCompatActivity() {
             }
             btnStart.isEnabled = false
             btnStop.isEnabled  = true
-            editHttpPort.isEnabled = false
+            setPortEditable(false)
         } else {
             tvStatus.text = getString(R.string.status_stopped)
             statusDot.setBackgroundResource(R.drawable.shape_status_dot)
@@ -200,7 +233,7 @@ class MainActivity : AppCompatActivity() {
             tvUrl.text    = "—"
             btnStart.isEnabled = true
             btnStop.isEnabled  = false
-            editHttpPort.isEnabled = true
+            setPortEditable(true)
         }
 
         tvAdbStatus.text = when {
@@ -213,6 +246,13 @@ class MainActivity : AppCompatActivity() {
         tvAdbStatus.setTextColor(Color.parseColor(adbColor))
         adbDot.setBackgroundResource(R.drawable.shape_status_dot)
         adbDot.background.setTint(Color.parseColor(adbColor))
+    }
+
+    /** The running server keeps the port it was started with, so it is only editable while stopped. */
+    private fun setPortEditable(editable: Boolean) {
+        editHttpPort.isEnabled = editable
+        btnPortDown.isEnabled  = editable
+        btnPortUp.isEnabled    = editable
     }
 }
 

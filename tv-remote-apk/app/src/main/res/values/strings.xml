@@ -14,5 +14,9 @@
     <string name="adb_hint">Enable Developer Options → USB Debugging on first run</string>
     <string name="http_port_label">HTTP web remote port</string>
     <string name="http_port_invalid">Enter a port from 1 to 65535</string>
+    <string name="http_port_step_down" translatable="false">−</string>
+    <string name="http_port_step_up" translatable="false">+</string>
+    <string name="http_port_step_down_desc">Lower HTTP port by one</string>
+    <string name="http_port_step_up_desc">Raise HTTP port by one</string>
     <string name="http_unavailable">HTTP unavailable on port %1$d</string>
 </resources>
