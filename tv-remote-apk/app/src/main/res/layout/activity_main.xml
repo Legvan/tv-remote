@@ -237,6 +237,7 @@
             android:stateListAnimator="@null"
             android:layout_marginEnd="12dp"
             android:focusable="true"
+            android:focusedByDefault="true"
             android:nextFocusUp="@id/editHttpPort"
             android:nextFocusRight="@+id/btnStop" />
 
