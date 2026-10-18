@@ -194,7 +194,9 @@ class RemoteService : Service() {
 
     private fun broadcastStatus(serverRunning: Boolean, adbConnected: Boolean, url: String?) {
         currentStatus = StatusSnapshot(serverRunning, adbConnected, url)
-        sendBroadcast(Intent(ACTION_STATUS_UPDATE).apply {
+        // Explicit package: MainActivity's receiver is not exported, and an implicit broadcast
+        // would also reach any other app that registered for this action.
+        sendBroadcast(Intent(ACTION_STATUS_UPDATE).setPackage(packageName).apply {
             putExtra(EXTRA_SERVER_RUNNING, serverRunning)
             putExtra(EXTRA_ADB_CONNECTED,  adbConnected)
             putExtra(EXTRA_SERVER_URL,     url)

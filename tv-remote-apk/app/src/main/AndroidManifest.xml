@@ -18,6 +18,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- connectedDevice: correct type for a persistent local server + ADB socket (Play Store compliant) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!--
+      Android 13+ (API 33) shows the "Running on <ip>:<port>" notification only to apps that
+      declare this. The app does not ask for it; the service runs either way, and anyone who
+      wants the notification can switch it on in the app's system settings.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Auto-start on boot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
