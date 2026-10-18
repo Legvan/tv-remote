@@ -69,26 +69,38 @@ class HttpServer(
     @Serializable
     data class TextBody(val text: String = "")
 
+    // RemoteService starts the server on a worker thread and stops it from another one, so a
+    // Stop pressed right after Start can arrive mid-start. Without the lock and the flag the
+    // stop would find no server yet, and the one still starting would keep the port.
+    private val lifecycleLock = Any()
     private var server: ApplicationEngine? = null
+    private var stopped = false
 
     fun start() {
-        verifyPortAvailable(port)
-        server = embeddedServer(CIO, port = port, host = HOST) {
-            install(ContentNegotiation) {
-                json(Json { ignoreUnknownKeys = true })
+        synchronized(lifecycleLock) {
+            check(!stopped) { "HTTP server stopped before it started" }
+            verifyPortAvailable(port)
+            server = embeddedServer(CIO, port = port, host = HOST) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true })
+                }
+                routing {
+                    setupRoutes()
+                }
+            }.also {
+                it.start(wait = false)
+                Log.i(TAG, "HTTP server started on port $port")
             }
-            routing {
-                setupRoutes()
-            }
-        }.also {
-            it.start(wait = false)
-            Log.i(TAG, "HTTP server started on port $port")
         }
     }
 
+    /** Blocks for up to the shutdown timeout (0.5 s); one-way, a stopped server cannot restart. */
     fun stop() {
-        server?.stop(250, 500)
-        server = null
+        val engine = synchronized(lifecycleLock) {
+            stopped = true
+            server.also { server = null }
+        }
+        engine?.stop(250, 500)
         Log.i(TAG, "HTTP server stopped")
     }
 

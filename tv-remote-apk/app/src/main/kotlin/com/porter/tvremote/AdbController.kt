@@ -7,6 +7,8 @@ import com.cgutman.adblib.AdbBase64
 import com.cgutman.adblib.AdbConnection
 import com.cgutman.adblib.AdbCrypto
 import java.io.File
+import java.io.IOException
+import java.net.InetSocketAddress
 import java.net.Socket
 
 /**
@@ -50,6 +52,16 @@ class AdbController(private val context: Context) {
     @Volatile private var connection: AdbConnection? = null
     private val lock = Any()
 
+    /**
+     * Socket of a [connect] in progress. AdbLib's connect() waits for the user to answer
+     * "Allow USB debugging?" for as long as that takes, holding [lock]; [disconnect] closes
+     * this socket to make it give up instead of queueing behind it.
+     */
+    @Volatile private var pendingSocket: Socket? = null
+
+    /** Set by [disconnect]. A controller is not reused after that. */
+    @Volatile private var closed = false
+
     private val keyFile    = File(context.filesDir, "adbkey")
     private val pubKeyFile = File(context.filesDir, "adbkey.pub")
 
@@ -80,8 +92,14 @@ class AdbController(private val context: Context) {
     /** Connect to the loopback ADB daemon. Returns true on success. */
     fun connect(): Boolean {
         synchronized(lock) {
+            if (closed) return false
+            val socket = Socket()
+            pendingSocket = socket
             return try {
-                val socket = Socket(ADB_HOST, ADB_PORT)
+                // Checked after publishing the socket, so a concurrent disconnect() either
+                // sees the socket and closes it, or this sees the flag.
+                if (closed) throw IOException("ADB controller closed")
+                socket.connect(InetSocketAddress(ADB_HOST, ADB_PORT))
                 val conn   = AdbConnection.create(socket, crypto)
                 // connect() blocks until authenticated (triggers "Allow USB Debugging?" on first run)
                 conn.connect()
@@ -90,8 +108,11 @@ class AdbController(private val context: Context) {
                 true
             } catch (e: Exception) {
                 Log.e(TAG, "ADB connect failed: ${e.message}")
+                runCatching { socket.close() }
                 connection = null
                 false
+            } finally {
+                pendingSocket = null
             }
         }
     }
@@ -198,7 +219,13 @@ class AdbController(private val context: Context) {
         shell("input text $escaped")
     }
 
+    /**
+     * Closes the connection for good, including one still waiting for authorization.
+     * May still wait for a shell command in flight, so keep it off the main thread.
+     */
     fun disconnect() {
+        closed = true
+        pendingSocket?.let { runCatching { it.close() } }
         synchronized(lock) {
             runCatching { connection?.close() }
             connection = null

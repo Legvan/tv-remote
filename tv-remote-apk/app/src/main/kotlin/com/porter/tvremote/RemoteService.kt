@@ -13,16 +13,20 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Foreground service that keeps the HTTP server and UDP starter alive indefinitely.
  *
  * Lifecycle:
  *   START_SERVICE → onCreate() → startForeground() → HTTP/UDP start + ADB connect
- *   STOP_SERVICE  → onDestroy() → HTTP/UDP stop + ADB disconnect + lock release
+ *   STOP_SERVICE  → onDestroy() → UDP stop + lock release; HTTP stop + ADB disconnect
+ *                   finish in the background, and the next start waits for the HTTP port
  *
  * Broadcasts:
  *   ACTION_STATUS_UPDATE — sent when ADB / server state changes; received by MainActivity.
@@ -52,6 +56,15 @@ class RemoteService : Service() {
         )
         @Volatile var currentStatus: StatusSnapshot? = null
             private set
+
+        /**
+         * Stopping blocks: Ktor's graceful shutdown, and an ADB connect that may be waiting on
+         * "Allow USB debugging?". onDestroy hands it to this scope, which outlives the instance.
+         */
+        private val teardownScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+        /** The previous instance's HTTP shutdown; the next start waits for it to free the port. */
+        @Volatile private var pendingHttpStop: Job? = null
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -90,10 +103,13 @@ class RemoteService : Service() {
     override fun onDestroy() {
         Log.i(TAG, "Service destroying")
         currentStatus = null
-        yatseStarter.stop()
-        httpServer.stop()
-        adb.disconnect()
+        // Cancelled first, so a start still waiting on ADB cannot publish a status afterwards.
         serviceScope.cancel()
+        yatseStarter.stop()
+        // Both block, the ADB one for as long as an authorization prompt stays unanswered.
+        // Called here on the main thread, that was an ANR.
+        pendingHttpStop = teardownScope.launch { httpServer.stop() }
+        teardownScope.launch { adb.disconnect() }
         releaseLocks()
         super.onDestroy()
     }
@@ -104,6 +120,9 @@ class RemoteService : Service() {
 
     private fun startServerAsync() {
         serviceScope.launch {
+            // A Stop moments ago may still be releasing the port in the background.
+            pendingHttpStop?.join()
+
             // 1. Start HTTP server (non-blocking, Ktor starts its own coroutines)
             var httpRunning = false
             try {
@@ -129,10 +148,15 @@ class RemoteService : Service() {
             } else {
                 "Yatse/Kore starter on UDP ${YatseStarter.DEFAULT_PORT}; HTTP port ${httpServer.port} unavailable"
             }
-            updateNotification(notificationText, adbOk)
-            // The foreground service and UDP listener are running even if HTTP could not bind.
-            // Report the service lifecycle accurately; a null URL communicates HTTP failure.
-            broadcastStatus(serverRunning = true, adbConnected = adbOk, url = url)
+            withContext(Dispatchers.Main) {
+                // onDestroy runs on the main thread too. If it already has, Stop was pressed
+                // while ADB was connecting: no notification or "running" status after that.
+                ensureActive()
+                updateNotification(notificationText, adbOk)
+                // The foreground service and UDP listener are running even if HTTP could not bind.
+                // Report the service lifecycle accurately; a null URL communicates HTTP failure.
+                broadcastStatus(serverRunning = true, adbConnected = adbOk, url = url)
+            }
         }
     }
 
