@@ -37,10 +37,7 @@ class MainActivity : AppCompatActivity() {
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != RemoteService.ACTION_STATUS_UPDATE) return
-            val running = intent.getBooleanExtra(RemoteService.EXTRA_SERVER_RUNNING, false)
-            val adbOk   = intent.getBooleanExtra(RemoteService.EXTRA_ADB_CONNECTED,  false)
-            val url     = intent.getStringExtra(RemoteService.EXTRA_SERVER_URL)
-            updateUi(running, adbOk, url)
+            showServiceStatus()
         }
     }
 
@@ -100,9 +97,7 @@ class MainActivity : AppCompatActivity() {
         )
         // Re-sync UI from the in-process snapshot in case we missed a broadcast while paused
         // (e.g. the "Allow USB Debugging?" dialog triggers onPause/onResume mid-startup).
-        RemoteService.currentStatus?.let { s ->
-            updateUi(s.serverRunning, s.adbConnected, s.url)
-        }
+        showServiceStatus()
     }
 
     override fun onPause() {
@@ -113,6 +108,12 @@ class MainActivity : AppCompatActivity() {
     // ─── Service control ─────────────────────────────────────────────────────
 
     private fun startServer() {
+        // Already running, e.g. started by BootReceiver before this screen got a status. The
+        // server keeps the port it was started with, so do not save one it would not use.
+        if (RemoteService.currentStatus != null) {
+            showServiceStatus()
+            return
+        }
         val port = HttpServerSettings.parsePort(editHttpPort.text.toString())
         if (port == null) {
             editHttpPort.error = getString(R.string.http_port_invalid)
@@ -122,10 +123,9 @@ class MainActivity : AppCompatActivity() {
         HttpServerSettings.save(this, port)
         ContextCompat.startForegroundService(this, Intent(this, RemoteService::class.java))
         offerBatteryOptimizationExemption()
-        updateUi(running = true, adbOk = false, url = null)
+        updateUi(running = true, adbOk = false, url = null, starting = true)
         btnStart.isEnabled = false
         btnStop.isEnabled  = true
-        tvStatus.text      = getString(R.string.status_starting)
         btnStop.requestFocus()
     }
 
@@ -164,15 +164,32 @@ class MainActivity : AppCompatActivity() {
 
     // ─── UI updates ──────────────────────────────────────────────────────────
 
-    private fun updateUi(running: Boolean, adbOk: Boolean, url: String?) {
+    /** Shows what RemoteService last published; null means it is not running. */
+    private fun showServiceStatus() {
+        val status = RemoteService.currentStatus
+        if (status == null) {
+            updateUi(running = false, adbOk = false, url = null)
+        } else {
+            // The field is locked while running. Show the port the service was started with,
+            // not an edit made while this screen still showed it as stopped.
+            editHttpPort.setText(HttpServerSettings.load(this).toString())
+            updateUi(status.serverRunning, status.adbConnected, status.url, status.starting)
+        }
+    }
+
+    private fun updateUi(running: Boolean, adbOk: Boolean, url: String?, starting: Boolean = false) {
         if (running) {
-            tvStatus.text = getString(R.string.status_running)
+            // While starting, the URL shows up as soon as HTTP is listening; ADB can take longer.
+            tvStatus.text = getString(
+                if (starting && url == null) R.string.status_starting else R.string.status_running
+            )
             statusDot.setBackgroundResource(R.drawable.shape_status_dot)
             statusDot.background.setTint(Color.parseColor("#34C759"))
-            tvUrl.text = url ?: getString(
-                R.string.http_unavailable,
-                HttpServerSettings.load(this)
-            )
+            tvUrl.text = when {
+                url != null -> url
+                starting    -> "—"
+                else        -> getString(R.string.http_unavailable, HttpServerSettings.load(this))
+            }
             btnStart.isEnabled = false
             btnStop.isEnabled  = true
             editHttpPort.isEnabled = false
@@ -186,12 +203,11 @@ class MainActivity : AppCompatActivity() {
             editHttpPort.isEnabled = true
         }
 
-        tvAdbStatus.text = if (adbOk) {
-            "ADB: connected (loopback 127.0.0.1:5555)"
-        } else {
-            "ADB: not connected — " +
-            if (running) "open Developer Options → Enable USB Debugging"
-            else "start the server first"
+        tvAdbStatus.text = when {
+            adbOk    -> "ADB: connected (loopback 127.0.0.1:5555)"
+            starting -> "ADB: connecting — accept \"Allow USB debugging?\" if asked"
+            running  -> "ADB: not connected — open Developer Options → Enable USB Debugging"
+            else     -> "ADB: not connected — start the server first"
         }
         val adbColor = if (adbOk) "#34C759" else "#6B7280"
         tvAdbStatus.setTextColor(Color.parseColor(adbColor))

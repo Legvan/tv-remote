@@ -29,7 +29,8 @@ import kotlinx.coroutines.withContext
  *                   finish in the background, and the next start waits for the HTTP port
  *
  * Broadcasts:
- *   ACTION_STATUS_UPDATE — sent when ADB / server state changes; received by MainActivity.
+ *   ACTION_STATUS_UPDATE — sent whenever [currentStatus] changes, including to null on stop;
+ *                          MainActivity re-reads [currentStatus] when it arrives.
  */
 class RemoteService : Service() {
 
@@ -39,20 +40,20 @@ class RemoteService : Service() {
         const val NOTIFICATION_ID = 1001
 
         const val ACTION_STATUS_UPDATE = "com.porter.tvremote.STATUS_UPDATE"
-        const val EXTRA_SERVER_RUNNING = "server_running"
-        const val EXTRA_ADB_CONNECTED  = "adb_connected"
-        const val EXTRA_SERVER_URL     = "server_url"
 
         /**
          * Last-known status snapshot, kept in-process so MainActivity can re-sync
          * in onResume() after missing a broadcast (e.g. the "Allow USB Debugging?"
          * dialog causes onPause/onResume while the service is still starting).
-         * Null when the service is not running.
+         * Null when the service is not running. Set from onCreate() on, so a service started
+         * elsewhere (BootReceiver) never shows as stopped, with an editable port, in MainActivity.
          */
         data class StatusSnapshot(
             val serverRunning: Boolean,
             val adbConnected: Boolean,
-            val url: String?
+            val url: String?,
+            /** True until the first ADB connect attempt has finished. */
+            val starting: Boolean = false,
         )
         @Volatile var currentStatus: StatusSnapshot? = null
             private set
@@ -89,6 +90,7 @@ class RemoteService : Service() {
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Starting…", null))
         acquireLocks()
+        publishStatus(StatusSnapshot(serverRunning = true, adbConnected = false, url = null, starting = true))
         // Independent from HTTP startup so a UDP bind failure cannot disable the web remote,
         // and an HTTP startup failure cannot prevent Yatse/Kore compatibility.
         yatseStarter.start()
@@ -102,7 +104,7 @@ class RemoteService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "Service destroying")
-        currentStatus = null
+        publishStatus(null)
         // Cancelled first, so a start still waiting on ADB cannot publish a status afterwards.
         serviceScope.cancel()
         yatseStarter.stop()
@@ -133,6 +135,22 @@ class RemoteService : Service() {
                 Log.e(TAG, "Failed to start HTTP server", e)
             }
 
+            if (httpRunning) {
+                // The web remote is reachable already, while ADB can wait a long time for the
+                // user to answer "Allow USB debugging?". Show the URL in the meantime.
+                val ip = getLanIp()
+                publishOnMain(
+                    "Running on $ip:${httpServer.port}",
+                    adbOk = null,
+                    StatusSnapshot(
+                        serverRunning = true,
+                        adbConnected = false,
+                        url = "http://$ip:${httpServer.port}",
+                        starting = true,
+                    ),
+                )
+            }
+
             // 2. Connect to ADB loopback even when HTTP is unavailable. The UDP
             // listener is independent and still needs the fixed wake/Kodi action.
             val adbOk = adb.connect()
@@ -148,15 +166,25 @@ class RemoteService : Service() {
             } else {
                 "Yatse/Kore starter on UDP ${YatseStarter.DEFAULT_PORT}; HTTP port ${httpServer.port} unavailable"
             }
-            withContext(Dispatchers.Main) {
-                // onDestroy runs on the main thread too. If it already has, Stop was pressed
-                // while ADB was connecting: no notification or "running" status after that.
-                ensureActive()
-                updateNotification(notificationText, adbOk)
-                // The foreground service and UDP listener are running even if HTTP could not bind.
-                // Report the service lifecycle accurately; a null URL communicates HTTP failure.
-                broadcastStatus(serverRunning = true, adbConnected = adbOk, url = url)
-            }
+            // The foreground service and UDP listener are running even if HTTP could not bind.
+            // Report the service lifecycle accurately; a null URL communicates HTTP failure.
+            publishOnMain(
+                notificationText,
+                adbOk,
+                StatusSnapshot(serverRunning = true, adbConnected = adbOk, url = url),
+            )
+        }
+    }
+
+    /**
+     * onDestroy runs on the main thread too. If it already has, Stop was pressed while this
+     * start was still in progress: no notification or "running" status after that.
+     */
+    private suspend fun publishOnMain(notificationText: String, adbOk: Boolean?, status: StatusSnapshot) {
+        withContext(Dispatchers.Main) {
+            ensureActive()
+            updateNotification(notificationText, adbOk)
+            publishStatus(status)
         }
     }
 
@@ -208,7 +236,7 @@ class RemoteService : Service() {
             .build()
     }
 
-    private fun updateNotification(contentText: String, adbOk: Boolean) {
+    private fun updateNotification(contentText: String, adbOk: Boolean?) {
         val notif = buildNotification(contentText, adbOk)
         getSystemService(NotificationManager::class.java)
             .notify(NOTIFICATION_ID, notif)
@@ -216,15 +244,12 @@ class RemoteService : Service() {
 
     // ─── Broadcasts ───────────────────────────────────────────────────────────
 
-    private fun broadcastStatus(serverRunning: Boolean, adbConnected: Boolean, url: String?) {
-        currentStatus = StatusSnapshot(serverRunning, adbConnected, url)
+    /** Main thread only, like onDestroy(), so a stopped service cannot be published as running. */
+    private fun publishStatus(status: StatusSnapshot?) {
+        currentStatus = status
         // Explicit package: MainActivity's receiver is not exported, and an implicit broadcast
         // would also reach any other app that registered for this action.
-        sendBroadcast(Intent(ACTION_STATUS_UPDATE).setPackage(packageName).apply {
-            putExtra(EXTRA_SERVER_RUNNING, serverRunning)
-            putExtra(EXTRA_ADB_CONNECTED,  adbConnected)
-            putExtra(EXTRA_SERVER_URL,     url)
-        })
+        sendBroadcast(Intent(ACTION_STATUS_UPDATE).setPackage(packageName))
     }
 
     // ─── WakeLock / WifiLock ─────────────────────────────────────────────────
