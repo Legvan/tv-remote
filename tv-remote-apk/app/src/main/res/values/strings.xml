@@ -19,4 +19,6 @@
     <string name="http_port_step_down_desc">Lower HTTP port by one</string>
     <string name="http_port_step_up_desc">Raise HTTP port by one</string>
     <string name="http_unavailable">HTTP unavailable on port %1$d</string>
+    <string name="phone_notice_title">Install this app on your TV, not on your phone</string>
+    <string name="phone_notice_body">TV Remote runs on the Android TV or Google TV itself. Your phone needs no app: when the server is running on the TV, open http://&lt;TV-IP&gt;:%1$d in the phone\'s browser. The TV screen shows the exact address. (If this device is a TV box connected to your TV, ignore this note.)</string>
 </resources>

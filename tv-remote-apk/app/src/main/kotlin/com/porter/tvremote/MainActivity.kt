@@ -1,9 +1,12 @@
 package com.porter.tvremote
 
+import android.app.UiModeManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
 import android.os.PowerManager
@@ -51,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         applyWindowInsets()
+        showPhoneNotice()
 
         tvStatus    = findViewById(R.id.tvStatus)
         tvUrl       = findViewById(R.id.tvUrl)
@@ -76,26 +80,35 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Edge-to-edge is mandatory from targetSdk 36 — windowOptOutEdgeToEdgeEnforcement is ignored.
-     * The layout's own padding stays the design baseline; system bar and cutout insets are added
-     * on top of it so nothing hides behind the status/navigation bars on phones. TVs report zero
-     * insets, so the TV layout is unchanged.
+     * The scrolling content keeps its own padding as the design baseline; system bar and cutout
+     * insets go on the root, around it and the phone notice, so nothing hides behind the
+     * status/navigation bars on phones. TVs report zero insets, so the TV layout is unchanged.
      */
     private fun applyWindowInsets() {
-        val root = findViewById<View>(R.id.root)
-        val basePadding = root.paddingLeft
-        ViewCompat.setOnApplyWindowInsetsListener(root) { view, windowInsets ->
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { view, windowInsets ->
             val bars = windowInsets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
-            view.setPadding(
-                basePadding + bars.left,
-                basePadding + bars.top,
-                basePadding + bars.right,
-                basePadding + bars.bottom
-            )
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             windowInsets
         }
     }
+
+    /**
+     * Phones can install the APK too (leanback is optional so that TV boxes without it still
+     * get the app). There the screen used to look broken: say instead where the app belongs and
+     * how a phone is meant to use it (#8).
+     */
+    private fun showPhoneNotice() {
+        if (isTelevision()) return
+        findViewById<TextView>(R.id.tvPhoneNotice).text =
+            getString(R.string.phone_notice_body, HttpServerSettings.DEFAULT_PORT)
+        findViewById<View>(R.id.phoneNotice).visibility = View.VISIBLE
+    }
+
+    private fun isTelevision(): Boolean =
+        getSystemService(UiModeManager::class.java)?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
 
     override fun onResume() {
         super.onResume()
