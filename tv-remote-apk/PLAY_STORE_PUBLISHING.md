@@ -173,8 +173,8 @@ Prepare all of the following before opening Play Console:
 | Field | Limit | Suggested content |
 |-------|-------|------------------|
 | App title | 30 chars | "TV Remote — Web Control" |
-| Short description | 80 chars | "Control your Android TV from any browser on your home network" |
-| Full description | 4,000 chars | Features, setup steps, requirements (ADB over network), supported devices |
+| Short description | 80 chars | "Install on your Android TV, then use any phone's browser as the remote" (same as `fastlane/.../short_description.txt`) |
+| Full description | 4,000 chars | Start with "install it on the TV, not on your phone" (#8); then features, setup steps, requirements (ADB over network), supported devices — see `fastlane/metadata/android/en-US/full_description.txt` |
 
 ### Privacy Policy
 

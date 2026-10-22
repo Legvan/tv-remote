@@ -4,6 +4,12 @@ A web-based remote control for **Android TV / Google TV** devices, controlled ov
 
 Works with any Google TV or Android TV device — TCL, Sony, Philips, Hisense, Nvidia Shield, Chromecast with Google TV, and more.
 
+> [!IMPORTANT]
+> **Got the app from F-Droid, Google Play or the APK? Install it on the TV, not on your phone.**
+> The app runs on the Android TV / Google TV itself. Your phone needs no app: it opens
+> `http://<TV-IP>:8080` in its browser, and the TV shows the exact address once you press
+> **Start Server**. Setup steps: [On-device APK](#on-device-apk).
+
 ![Remote screenshot](docs/screenshot.png)
 
 ---
@@ -126,6 +132,31 @@ All ADB communication is **direct TCP** (no system `adb` daemon needed — pure 
 - Uses [AdbLib](https://github.com/cgutman/AdbLib) loopback to inject key events (no root needed)
 - Listens for Yatse's fixed remote-start message or Kore's Wake-on-LAN packet on UDP port 5600 and wakes/launches Kodi
 - Available on the [Google Play Store](https://play.google.com/store/apps/details?id=com.porter.tvremote)
+
+### Setup
+
+1. Install the app **on the TV**. Nothing is installed on the phone; if you open the app on a
+   phone, it only shows a note saying so.
+2. On the TV, enable Developer options ([see above](#enable-adb-on-your-tv-one-time)) and turn
+   on **Network debugging / ADB over network**.
+3. Open **TV Remote** on the TV and press **Start Server**.
+4. Accept the **Allow USB debugging?** prompt on the TV and tick **Always allow**.
+5. On your phone, tablet or computer, open the address the TV shows (`http://<TV-IP>:8080`) in
+   any browser.
+
+### Troubleshooting
+
+- **No "Allow USB debugging?" prompt appears.** The prompt only appears once debugging is
+  switched on in Developer options; until then the TV has nothing to ask about. Turn on
+  Network debugging / ADB over network, then press **Stop Server** and **Start Server** again.
+- **No on-screen keyboard appears for the port field.** If voice input is enabled in the TV's
+  keyboard settings, it can hide the on-screen keyboard completely. Turn voice input off there,
+  or use the **−** / **+** buttons next to the port field (added after v1.6).
+- **"HTTP unavailable on port 8080".** Another app on the TV already uses that port, most often
+  Kodi's web server (Kodi: **Settings → Services → Control**), which Yatse and Kore rely on.
+  Leave Kodi on 8080 and give TV Remote another port, such as 8081, before pressing
+  **Start Server**. In v1.6 and earlier the same message also shows while the app is still
+  waiting for the debugging prompt, so check the first point too.
 
 To start the server remotely from the CLI (e.g. if the app was killed):
 

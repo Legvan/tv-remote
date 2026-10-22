@@ -1,8 +1,10 @@
+Install this app on your Android TV or Google TV, not on your phone. Your phone needs no app at all: it just opens the TV's address in its browser.
+
 TV Remote turns your Android TV into a self-hosted web remote that any device on your local network can control — phone, tablet, laptop — without installing any app on the controller device.
 
 HOW IT WORKS
 
-The app runs a tiny HTTP server (port 8080) directly on your TV. Open http://&lt;tv-ip&gt;:8080 in any browser and you get a full remote control interface. Input is injected via ADB loopback — the app connects to the TV's own ADB daemon at 127.0.0.1:5555, so no root is required.
+The app runs a tiny HTTP server (port 8080) directly on your TV. Open http://&lt;tv-ip&gt;:8080 in any browser and you get a full remote control interface; the TV shows the exact address once you press Start Server. Input is injected via ADB loopback — the app connects to the TV's own ADB daemon at 127.0.0.1:5555, so no root is required.
 
 FEATURES
 
@@ -21,7 +23,7 @@ Completely local. No data leaves your network. No accounts, no telemetry, no ana
 
 REQUIREMENTS
 
-• Android TV or Google TV device (Android 8.0+)
+• Android TV or Google TV device (Android 8.0+), with this app installed on the TV
 • Developer Options enabled on the TV
 • ADB over network enabled (TCP/IP mode, port 5555)
 • Both the TV and the controller must be on the same LAN
