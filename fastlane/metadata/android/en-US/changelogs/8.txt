@@ -1,0 +1,1 @@
+v1.7: Opened on a phone, the app now says it belongs on the TV, and the screen scrolls on small displays. The HTTP port field has −/+ buttons, so it can be changed with a remote. Start Server gets focus by default. Fixes: Stop no longer freezes the app while the USB debugging prompt is open, and a server already starting in the background shows as running and keeps its port.
