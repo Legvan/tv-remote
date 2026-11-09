@@ -5,268 +5,332 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
-    android:background="#0F0F11"
-    android:padding="64dp">
+    android:background="#0F0F11">
 
-    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <!-- ── Phone notice (#8) ──────────────────────────────────────────────────
+         Shown by MainActivity only on devices that are not a TV. Outside the ScrollView so it
+         stays on screen however the rest scrolls. -->
     <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="12dp">
-
-        <!-- Blue icon square -->
-        <TextView
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:gravity="center"
-            android:text="TV"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:background="@drawable/shape_icon"
-            android:layout_marginEnd="18dp" />
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="TV Remote"
-                android:textColor="#FFFFFF"
-                android:textSize="34sp"
-                android:textStyle="bold"
-                android:letterSpacing="-0.02"
-                android:lineSpacingMultiplier="1.0" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Web-based remote — open from any browser on your LAN"
-                android:textColor="#6B7280"
-                android:textSize="15sp" />
-
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- ── Divider ─────────────────────────────────────────────────────────── -->
-    <View
-        android:layout_width="560dp"
-        android:layout_height="1dp"
-        android:background="#1F1F23"
-        android:layout_marginBottom="32dp" />
-
-    <!-- ── Status card ────────────────────────────────────────────────────── -->
-    <LinearLayout
-        android:layout_width="560dp"
+        android:id="@+id/phoneNotice"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/shape_card"
-        android:padding="28dp"
-        android:layout_marginBottom="28dp">
+        android:background="@drawable/shape_notice"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="12dp"
+        android:visibility="gone">
 
-        <!-- Server status row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
-
-            <View
-                android:id="@+id/statusDot"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:background="@drawable/shape_status_dot"
-                android:layout_marginEnd="14dp" />
-
-            <TextView
-                android:id="@+id/tvStatus"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Stopped"
-                android:textColor="#D1D5DB"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-        </LinearLayout>
-
-        <!-- URL -->
         <TextView
-            android:id="@+id/tvUrl"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="—"
-            android:textColor="#60A5FA"
-            android:textSize="22sp"
+            android:text="@string/phone_notice_title"
+            android:textColor="#FBBF24"
+            android:textSize="16sp"
             android:textStyle="bold"
-            android:layout_marginBottom="14dp" />
+            android:layout_marginBottom="4dp" />
 
-        <!-- HTTP port (Yatse and Kore use the separate fixed UDP port 5600).
-             −/+ step the port so it can be changed with a remote, without a keyboard. -->
+        <TextView
+            android:id="@+id/tvPhoneNotice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#E5E7EB"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Scrolls only where the screen is too short for the layout (phones in landscape).
+         On a TV (960×540dp) everything fits and is centred exactly as before: the content is
+         centred either way, so the padding only sets how close to the edges it may get when
+         it does not fit. 64dp, as the old non-scrolling layout had, would not fit a TV. -->
+    <ScrollView
+        android:id="@+id/scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="14dp">
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="24dp">
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/http_port_label"
-                android:textColor="#9CA3AF"
-                android:textSize="14sp" />
-
-            <Button
-                android:id="@+id/btnPortDown"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:padding="0dp"
-                android:text="@string/http_port_step_down"
-                android:contentDescription="@string/http_port_step_down_desc"
-                android:textColor="#D1D5DB"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:background="@drawable/shape_btn_secondary"
-                android:stateListAnimator="@null"
-                android:layout_marginEnd="8dp"
-                android:focusable="true"
-                android:nextFocusRight="@+id/editHttpPort"
-                android:nextFocusDown="@+id/btnStart" />
-
-            <EditText
-                android:id="@+id/editHttpPort"
-                android:layout_width="100dp"
-                android:layout_height="48dp"
-                android:digits="0123456789"
-                android:inputType="number"
-                android:imeOptions="actionDone"
-                android:maxLength="5"
-                android:selectAllOnFocus="true"
-                android:singleLine="true"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:gravity="center"
-                android:focusable="true"
-                android:nextFocusLeft="@id/btnPortDown"
-                android:nextFocusRight="@+id/btnPortUp"
-                android:nextFocusDown="@id/btnStart" />
-
-            <Button
-                android:id="@+id/btnPortUp"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:padding="0dp"
-                android:text="@string/http_port_step_up"
-                android:contentDescription="@string/http_port_step_up_desc"
-                android:textColor="#D1D5DB"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:background="@drawable/shape_btn_secondary"
-                android:stateListAnimator="@null"
-                android:layout_marginStart="8dp"
-                android:focusable="true"
-                android:nextFocusLeft="@id/editHttpPort"
-                android:nextFocusDown="@id/btnStart" />
-
-        </LinearLayout>
-
-        <!-- Divider -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#2A2A2E"
-            android:layout_marginBottom="14dp" />
-
-        <!-- ADB status -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <View
-                android:id="@+id/adbDot"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:background="@drawable/shape_status_dot"
-                android:layout_marginEnd="10dp" />
-
-            <TextView
-                android:id="@+id/tvAdbStatus"
+            <!-- ── Header ─────────────────────────────────────────────────────────── -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="ADB: not connected"
-                android:textColor="#6B7280"
-                android:textSize="14sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <!-- Blue icon square -->
+                <TextView
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:gravity="center"
+                    android:text="TV"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/shape_icon"
+                    android:layout_marginEnd="18dp" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TV Remote"
+                        android:textColor="#FFFFFF"
+                        android:textSize="34sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="-0.02"
+                        android:lineSpacingMultiplier="1.0" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Web-based remote — open from any browser on your LAN"
+                        android:textColor="#6B7280"
+                        android:textSize="15sp" />
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 560dp wide on a TV, narrower where the screen is. -->
+            <com.porter.tvremote.MaxWidthLinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:maxWidth="560dp">
+
+                <!-- ── Divider ─────────────────────────────────────────────────────────── -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#1F1F23"
+                    android:layout_marginBottom="32dp" />
+
+                <!-- ── Status card ────────────────────────────────────────────────────── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/shape_card"
+                    android:padding="28dp"
+                    android:layout_marginBottom="28dp">
+
+                    <!-- Server status row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="16dp">
+
+                        <View
+                            android:id="@+id/statusDot"
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:background="@drawable/shape_status_dot"
+                            android:layout_marginEnd="14dp" />
+
+                        <TextView
+                            android:id="@+id/tvStatus"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Stopped"
+                            android:textColor="#D1D5DB"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                    <!-- URL -->
+                    <TextView
+                        android:id="@+id/tvUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="#60A5FA"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="14dp" />
+
+                    <!-- HTTP port (Yatse and Kore use the separate fixed UDP port 5600).
+                         −/+ step the port so it can be changed with a remote, without a keyboard. -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="14dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/http_port_label"
+                            android:textColor="#9CA3AF"
+                            android:textSize="14sp" />
+
+                        <Button
+                            android:id="@+id/btnPortDown"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:padding="0dp"
+                            android:text="@string/http_port_step_down"
+                            android:contentDescription="@string/http_port_step_down_desc"
+                            android:textColor="#D1D5DB"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:background="@drawable/shape_btn_secondary"
+                            android:stateListAnimator="@null"
+                            android:layout_marginEnd="8dp"
+                            android:focusable="true"
+                            android:nextFocusRight="@+id/editHttpPort"
+                            android:nextFocusDown="@+id/btnStart" />
+
+                        <EditText
+                            android:id="@+id/editHttpPort"
+                            android:layout_width="100dp"
+                            android:layout_height="48dp"
+                            android:digits="0123456789"
+                            android:inputType="number"
+                            android:imeOptions="actionDone"
+                            android:maxLength="5"
+                            android:selectAllOnFocus="true"
+                            android:singleLine="true"
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
+                            android:gravity="center"
+                            android:focusable="true"
+                            android:nextFocusLeft="@id/btnPortDown"
+                            android:nextFocusRight="@+id/btnPortUp"
+                            android:nextFocusDown="@id/btnStart" />
+
+                        <Button
+                            android:id="@+id/btnPortUp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:padding="0dp"
+                            android:text="@string/http_port_step_up"
+                            android:contentDescription="@string/http_port_step_up_desc"
+                            android:textColor="#D1D5DB"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:background="@drawable/shape_btn_secondary"
+                            android:stateListAnimator="@null"
+                            android:layout_marginStart="8dp"
+                            android:focusable="true"
+                            android:nextFocusLeft="@id/editHttpPort"
+                            android:nextFocusDown="@id/btnStart" />
+
+                    </LinearLayout>
+
+                    <!-- Divider -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="#2A2A2E"
+                        android:layout_marginBottom="14dp" />
+
+                    <!-- ADB status -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <View
+                            android:id="@+id/adbDot"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:background="@drawable/shape_status_dot"
+                            android:layout_marginEnd="10dp" />
+
+                        <TextView
+                            android:id="@+id/tvAdbStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="ADB: not connected"
+                            android:textColor="#6B7280"
+                            android:textSize="14sp" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- ── Buttons ────────────────────────────────────────────────────────── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginBottom="24dp">
+
+                    <Button
+                        android:id="@+id/btnStart"
+                        android:layout_width="0dp"
+                        android:layout_height="54dp"
+                        android:layout_weight="1"
+                        android:text="Start Server"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/shape_btn_primary"
+                        android:stateListAnimator="@null"
+                        android:layout_marginEnd="12dp"
+                        android:focusable="true"
+                        android:focusedByDefault="true"
+                        android:nextFocusUp="@id/editHttpPort"
+                        android:nextFocusRight="@+id/btnStop" />
+
+                    <Button
+                        android:id="@+id/btnStop"
+                        android:layout_width="0dp"
+                        android:layout_height="54dp"
+                        android:layout_weight="1"
+                        android:text="Stop Server"
+                        android:textColor="#9CA3AF"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/shape_btn_secondary"
+                        android:stateListAnimator="@null"
+                        android:enabled="false"
+                        android:focusable="true"
+                        android:nextFocusUp="@id/editHttpPort"
+                        android:nextFocusLeft="@id/btnStart" />
+
+                </LinearLayout>
+
+                <!-- ── Hint ──────────────────────────────────────────────────────────── -->
+                <TextView
+                    android:id="@+id/tvHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="On first run: approve the \'Allow USB Debugging\' prompt that appears on screen"
+                    android:textColor="#374151"
+                    android:textSize="13sp"
+                    android:gravity="center" />
+
+            </com.porter.tvremote.MaxWidthLinearLayout>
 
         </LinearLayout>
-
-    </LinearLayout>
-
-    <!-- ── Buttons ────────────────────────────────────────────────────────── -->
-    <LinearLayout
-        android:layout_width="560dp"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginBottom="24dp">
-
-        <Button
-            android:id="@+id/btnStart"
-            android:layout_width="0dp"
-            android:layout_height="54dp"
-            android:layout_weight="1"
-            android:text="Start Server"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:background="@drawable/shape_btn_primary"
-            android:stateListAnimator="@null"
-            android:layout_marginEnd="12dp"
-            android:focusable="true"
-            android:focusedByDefault="true"
-            android:nextFocusUp="@id/editHttpPort"
-            android:nextFocusRight="@+id/btnStop" />
-
-        <Button
-            android:id="@+id/btnStop"
-            android:layout_width="0dp"
-            android:layout_height="54dp"
-            android:layout_weight="1"
-            android:text="Stop Server"
-            android:textColor="#9CA3AF"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:background="@drawable/shape_btn_secondary"
-            android:stateListAnimator="@null"
-            android:enabled="false"
-            android:focusable="true"
-            android:nextFocusUp="@id/editHttpPort"
-            android:nextFocusLeft="@id/btnStart" />
-
-    </LinearLayout>
-
-    <!-- ── Hint ──────────────────────────────────────────────────────────── -->
-    <TextView
-        android:id="@+id/tvHint"
-        android:layout_width="560dp"
-        android:layout_height="wrap_content"
-        android:text="On first run: approve the \'Allow USB Debugging\' prompt that appears on screen"
-        android:textColor="#374151"
-        android:textSize="13sp"
-        android:gravity="center" />
+    </ScrollView>
 
 </LinearLayout>
