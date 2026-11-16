@@ -1,0 +1,281 @@
+# Builds the release APK from a version tag, signs it with the upload key and
+# attaches it to the GitHub release as tv-remote-vX.Y.apk.
+#
+# F-Droid rebuilds every tag itself (fdroiddata: Binaries + AllowedAPKSigningKeys)
+# and publishes this APK only if its own unsigned build is identical apart from
+# the signature. Keep the build reproducible: Gradle wrapper, JDK 21, Linux
+# (LF line endings), build-tools 36.0.0 and android-36 as installed by AGP.
+#
+# - push of a v* tag: build, sign, check, attach (or create a draft release)
+# - Run workflow (workflow_dispatch), or a pull request that changes this file:
+#   rebuild a published release unsigned and compare it with its APK.
+#   No secrets, nothing is published.
+name: Release APK
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release to rebuild and compare (empty = latest)
+        required: false
+        default: ''
+  pull_request:
+    paths:
+      - .github/workflows/release-apk.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # SHA-256 of the upload certificate, = AllowedAPKSigningKeys in fdroiddata
+  EXPECTED_CERT_SHA256: 4e2335afa65e6a6f0b42a30ef91f32fcad61c95d8ae153696f3293fdf8cbf563
+  JAVA_VERSION: '21'
+  BUILD_TOOLS: 36.0.0
+
+jobs:
+  release:
+    name: Build, sign and attach
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Keep these steps identical in both jobs (same toolchain = same APK).
+      - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Show toolchain
+        run: |
+          java -version 2>&1
+          grep -H Pkg.Revision "$ANDROID_HOME/platforms/android-36/source.properties" || echo "android-36 not installed (AGP installs it)"
+          ls "$ANDROID_HOME/build-tools"
+
+      - name: Install apksigcopier
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          cat > "$RUNNER_TEMP/requirements.txt" <<'EOF'
+          apksigcopier==1.1.1 --hash=sha256:0834bb7d6f3607bb0994cf8cd2e26b8f0c9d481e13b75872e0fa9cec052e519b
+          click==8.5.1 --hash=sha256:8bb5376d2006950386f8c6427613334a2acadc5f559cb80e638d00b4df957e37
+          EOF
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet --no-deps --only-binary=:all: --require-hashes -r "$RUNNER_TEMP/requirements.txt"
+
+      - name: Build unsigned release APK (what F-Droid builds)
+        working-directory: tv-remote-apk
+        run: |
+          ./gradlew --no-daemon clean assembleRelease
+          mkdir -p "$RUNNER_TEMP/out"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/out/unsigned.apk"
+      # End of the shared steps.
+
+      - name: Check that the tag matches versionName
+        run: |
+          badging=$("$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt2" dump badging "$RUNNER_TEMP/out/unsigned.apk")
+          package=$(grep '^package:' <<<"$badging")
+          echo "$package"
+          version_name=$(sed -n "s/.* versionName='\([^']*\)'.*/\1/p" <<<"$package")
+          version_code=$(sed -n "s/.* versionCode='\([0-9]*\)'.*/\1/p" <<<"$package")
+          if [ "v$version_name" != "$TAG" ]; then
+            echo "::error::Tag $TAG does not match versionName '$version_name'. F-Droid downloads v<versionName>/tv-remote-v<versionName>.apk, so the tag has to be v$version_name."
+            exit 1
+          fi
+          echo "VERSION_CODE=$version_code" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        working-directory: tv-remote-apk
+        env:
+          TV_REMOTE_KEYSTORE_BASE64: ${{ secrets.TV_REMOTE_KEYSTORE_BASE64 }}
+          ORG_GRADLE_PROJECT_TV_REMOTE_KEYSTORE_PASSWORD: ${{ secrets.TV_REMOTE_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_TV_REMOTE_KEY_ALIAS: ${{ secrets.TV_REMOTE_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_TV_REMOTE_KEY_PASSWORD: ${{ secrets.TV_REMOTE_KEY_PASSWORD }}
+        run: |
+          missing=()
+          [ -n "$TV_REMOTE_KEYSTORE_BASE64" ] || missing+=(TV_REMOTE_KEYSTORE_BASE64)
+          [ -n "$ORG_GRADLE_PROJECT_TV_REMOTE_KEYSTORE_PASSWORD" ] || missing+=(TV_REMOTE_KEYSTORE_PASSWORD)
+          [ -n "$ORG_GRADLE_PROJECT_TV_REMOTE_KEY_ALIAS" ] || missing+=(TV_REMOTE_KEY_ALIAS)
+          [ -n "$ORG_GRADLE_PROJECT_TV_REMOTE_KEY_PASSWORD" ] || missing+=(TV_REMOTE_KEY_PASSWORD)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing repository secrets: ${missing[*]} (see Future releases in F-DROID-SUBMISSION.md)"
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/upload-key.jks"
+          trap 'rm -f "$keystore"' EXIT
+          if ! printf '%s' "$TV_REMOTE_KEYSTORE_BASE64" | tr -d ' \r\n' | base64 --decode > "$keystore"; then
+            echo "::error::TV_REMOTE_KEYSTORE_BASE64 is not valid base64"
+            exit 1
+          fi
+          # app/build.gradle.kts signs only when all four properties are set
+          export ORG_GRADLE_PROJECT_TV_REMOTE_KEYSTORE_PATH="$keystore"
+          ./gradlew --no-daemon clean assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/out/signed.apk"
+
+      - name: Check the signature
+        run: |
+          export PATH="$RUNNER_TEMP/venv/bin:$ANDROID_HOME/build-tools/$BUILD_TOOLS:$PATH"
+          certs=$(apksigner verify --verbose --print-certs "$RUNNER_TEMP/out/signed.apk")
+          echo "$certs"
+          signers=$(grep -c '^Signer #[0-9]* certificate SHA-256 digest:' <<<"$certs" || true)
+          digest=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<<"$certs")
+          if [ "$signers" != 1 ] || [ "$digest" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::Expected one signer with certificate SHA-256 $EXPECTED_CERT_SHA256, got $signers signer(s), first '$digest'. Check the TV_REMOTE_KEYSTORE_BASE64 and TV_REMOTE_KEY_ALIAS secrets."
+            exit 1
+          fi
+          # What F-Droid does: copy this signature onto the unsigned build and verify it.
+          apksigcopier compare --unsigned "$RUNNER_TEMP/out/signed.apk" "$RUNNER_TEMP/out/unsigned.apk"
+          echo "The signed APK is the unsigned build plus the upload key's signature."
+
+      - name: Attach to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          export PATH="$RUNNER_TEMP/venv/bin:$ANDROID_HOME/build-tools/$BUILD_TOOLS:$PATH"
+          name="tv-remote-$TAG.apk"
+          apk="$RUNNER_TEMP/out/$name"
+          cp "$RUNNER_TEMP/out/signed.apk" "$apk"
+          if assets=$(gh release view "$TAG" --json assets --jq '.assets[].name' 2>"$RUNNER_TEMP/gh-view.err"); then
+            if grep -qxF "$name" <<<"$assets"; then
+              # Never replace an attached APK (uploaded by hand or by an earlier run); only check it.
+              gh release download "$TAG" --pattern "$name" --output "$RUNNER_TEMP/attached.apk"
+              if apksigcopier compare --unsigned "$RUNNER_TEMP/attached.apk" "$RUNNER_TEMP/out/unsigned.apk"; then
+                echo "::notice::$name is already attached to $TAG and matches this build; left unchanged."
+              else
+                echo "::error::$name is already attached to $TAG but differs from this build, so F-Droid would reject it. Delete it from the release and re-run this workflow."
+                exit 1
+              fi
+            else
+              gh release upload "$TAG" "$apk"
+              echo "::notice::Attached $name to the release $TAG; its description is unchanged."
+            fi
+          elif grep -q 'release not found' "$RUNNER_TEMP/gh-view.err"; then
+            changelog="fastlane/metadata/android/en-US/changelogs/$VERSION_CODE.txt"
+            {
+              echo "<!-- Draft created by the Release APK workflow. Write the release notes, then publish: F-Droid cannot download the APK of a draft. -->"
+              if [ -f "$changelog" ]; then cat "$changelog"; echo; echo; fi
+              echo "Signed with the same upload key (SHA-256: $EXPECTED_CERT_SHA256)."
+            } > "$RUNNER_TEMP/notes.md"
+            gh release create "$TAG" "$apk" --draft --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+            echo "::notice::No release for $TAG yet: created a draft with $name. Write the notes and publish it."
+          else
+            cat "$RUNNER_TEMP/gh-view.err" >&2
+            exit 1
+          fi
+
+  verify:
+    name: Rebuild a published release and compare
+    if: github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Pick the release and download its APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          tag="$REQUESTED_TAG"
+          if [ -z "$tag" ]; then
+            tag=$(gh release view --json tagName --jq .tagName)
+          fi
+          if ! [[ "$tag" =~ ^v[0-9A-Za-z._-]+$ ]]; then
+            echo "::error::Not a release tag: '$tag'"
+            exit 1
+          fi
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/out"
+          gh release download "$tag" --pattern "tv-remote-$tag.apk" --output "$RUNNER_TEMP/out/reference.apk"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          persist-credentials: false
+
+      # Keep these steps identical in both jobs (same toolchain = same APK).
+      - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Show toolchain
+        run: |
+          java -version 2>&1
+          grep -H Pkg.Revision "$ANDROID_HOME/platforms/android-36/source.properties" || echo "android-36 not installed (AGP installs it)"
+          ls "$ANDROID_HOME/build-tools"
+
+      - name: Install apksigcopier
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          cat > "$RUNNER_TEMP/requirements.txt" <<'EOF'
+          apksigcopier==1.1.1 --hash=sha256:0834bb7d6f3607bb0994cf8cd2e26b8f0c9d481e13b75872e0fa9cec052e519b
+          click==8.5.1 --hash=sha256:8bb5376d2006950386f8c6427613334a2acadc5f559cb80e638d00b4df957e37
+          EOF
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet --no-deps --only-binary=:all: --require-hashes -r "$RUNNER_TEMP/requirements.txt"
+
+      - name: Build unsigned release APK (what F-Droid builds)
+        working-directory: tv-remote-apk
+        run: |
+          ./gradlew --no-daemon clean assembleRelease
+          mkdir -p "$RUNNER_TEMP/out"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/out/unsigned.apk"
+      # End of the shared steps.
+
+      - name: Compare with the published APK
+        id: compare
+        run: |
+          export PATH="$RUNNER_TEMP/venv/bin:$ANDROID_HOME/build-tools/$BUILD_TOOLS:$PATH"
+          if apksigcopier compare --unsigned "$RUNNER_TEMP/out/reference.apk" "$RUNNER_TEMP/out/unsigned.apk"; then
+            echo "::notice::$TAG rebuilt by this workflow is identical to tv-remote-$TAG.apk apart from the signature."
+          else
+            echo "::error::$TAG rebuilt by this workflow differs from tv-remote-$TAG.apk, so F-Droid would reject releases built here."
+            exit 1
+          fi
+
+      - name: List the entries that differ
+        if: failure() && steps.compare.outcome == 'failure'
+        shell: python3 {0}
+        run: |
+          import os, zipfile
+          out = os.path.join(os.environ["RUNNER_TEMP"], "out")
+          ref = zipfile.ZipFile(os.path.join(out, "reference.apk")).infolist()
+          new = zipfile.ZipFile(os.path.join(out, "unsigned.apk")).infolist()
+          if [i.filename for i in ref] != [i.filename for i in new]:
+              print("The entry order or the set of entries differs.")
+          r, n = {i.filename: i for i in ref}, {i.filename: i for i in new}
+          for name in sorted(r.keys() | n.keys()):
+              a, b = r.get(name), n.get(name)
+              if a is None or b is None:
+                  print(("only in the published APK: " if b is None else "only in this build: ") + name)
+              elif (a.CRC, a.file_size, a.compress_type) != (b.CRC, b.file_size, b.compress_type):
+                  print("differs: " + name)
+
+      - name: Keep both APKs for diffoscope
+        if: failure() && steps.compare.outcome == 'failure'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apks-${{ env.TAG }}
+          path: |
+            ${{ runner.temp }}/out/reference.apk
+            ${{ runner.temp }}/out/unsigned.apk
+          retention-days: 7

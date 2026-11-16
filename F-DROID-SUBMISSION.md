@@ -135,14 +135,60 @@ Build cycle runs approximately every 24–48 hours. Once a green build appears, 
 F-Droid upgraded their build server hardware on 2025-12-30. AGP 9.1.0 should build cleanly. If the build fails on their end, the error log at monitor.f-droid.org will show why — most likely cause would be a missing `signingConfigs` block issue (F-Droid builds unsigned, then signs itself; the current `signingConfigs` block in `build.gradle.kts` reads from Gradle properties that won't exist on their server). If this happens, move the `signingConfig` assignment inside an `if` guard or add `buildFeatures { ... }` per reviewer feedback.
 
 ### Future releases
-When you release v1.4 or later:
+From v1.8 on, GitHub Actions (`.github/workflows/release-apk.yml`) builds, signs and attaches the
+release APK, from exactly the tagged commit:
+
 1. Bump `versionCode` and `versionName` in `tv-remote-apk/app/build.gradle.kts`
 2. Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`
-3. Commit, then `git tag vX.Y && git push origin master vX.Y`
-4. Build **from the tagged commit**: `cd tv-remote-apk && ./gradlew clean assembleRelease`
-5. Publish the APK as `tv-remote-vX.Y.apk` on the GitHub release for that tag — the `Binaries:`
-   URL pattern depends on this exact filename, and the APK must come from the tagged tree
-6. F-Droid picks up new tags automatically via `AutoUpdateMode: Version` — no MR needed.
+3. Commit, then `git tag vX.Y && git push origin master vX.Y` (the tag must be `v` + `versionName`)
+4. The workflow runs `./gradlew assembleRelease` on the tag (ubuntu-24.04, Temurin JDK 21) and checks that
+   the tag matches `versionName`, that the APK is signed by the upload key (certificate SHA-256
+   `4e2335afa65e6a6f0b42a30ef91f32fcad61c95d8ae153696f3293fdf8cbf563`) and that it equals an unsigned build
+   apart from the signature (what F-Droid checks). Then it attaches the APK as `tv-remote-vX.Y.apk`:
+   - to the release for that tag, if there is one (its description is left as it is);
+   - otherwise to a new **draft** release prefilled with the changelog. Write the notes and publish it:
+     F-Droid cannot download the APK of a draft.
+   An APK that is already attached is never replaced; the workflow only checks that it matches.
+5. F-Droid picks up new tags automatically via `AutoUpdateMode: Version` — no MR needed. It rebuilds the
+   tag and publishes the attached APK if its own build is identical apart from the signature.
+
+The Play Store AAB is still built by hand (`./gradlew bundleRelease`, see `tv-remote-apk/PLAY_STORE_PUBLISHING.md`).
+
+**Actions → Release APK → Run workflow** rebuilds a published release (default: the latest) without signing
+and compares it with its APK. It uses no secrets and publishes nothing. A pull request that changes the
+workflow runs the same check.
+
+#### Signing secrets
+Four repository secrets (Settings → Secrets and variables → Actions). The workflow decodes the keystore to a
+temporary file, passes the values to Gradle as `ORG_GRADLE_PROJECT_TV_REMOTE_KEYSTORE_PATH`,
+`ORG_GRADLE_PROJECT_TV_REMOTE_KEYSTORE_PASSWORD`, `ORG_GRADLE_PROJECT_TV_REMOTE_KEY_ALIAS` and
+`ORG_GRADLE_PROJECT_TV_REMOTE_KEY_PASSWORD` (the properties `hasReleaseSigning` in `app/build.gradle.kts`
+needs) and deletes the keystore right after the build.
+
+| Secret | Value |
+|---|---|
+| `TV_REMOTE_KEYSTORE_BASE64` | the upload keystore (`~/tv-remote-upload-key.jks` on mint), base64-encoded |
+| `TV_REMOTE_KEYSTORE_PASSWORD` | the keystore password (`TV_REMOTE_KEYSTORE_PASSWORD` in `~/.gradle/gradle.properties`) |
+| `TV_REMOTE_KEY_ALIAS` | the key alias (`TV_REMOTE_KEY_ALIAS`) |
+| `TV_REMOTE_KEY_PASSWORD` | the key password (`TV_REMOTE_KEY_PASSWORD`) |
+
+With `gh` on the machine that has the keystore (the last three commands prompt for the value):
+
+```bash
+base64 -w0 ~/tv-remote-upload-key.jks | gh secret set TV_REMOTE_KEYSTORE_BASE64 -R Legvan/tv-remote
+gh secret set TV_REMOTE_KEYSTORE_PASSWORD -R Legvan/tv-remote
+gh secret set TV_REMOTE_KEY_ALIAS -R Legvan/tv-remote
+gh secret set TV_REMOTE_KEY_PASSWORD -R Legvan/tv-remote
+```
+
+Line breaks in the base64 value are ignored. If a secret is missing or wrong, the tag run fails and attaches
+nothing: fix the secret, then **Re-run jobs** on that run.
+
+#### Building by hand (fallback)
+Build on Linux from the tagged commit (`cd tv-remote-apk && ./gradlew clean assembleRelease`, with the four
+properties in `~/.gradle/gradle.properties`) and upload the APK as `tv-remote-vX.Y.apk`. Not on Windows: with
+`core.autocrlf=true` the checkout turns the LF line endings of `assets/index.html` into CRLF, so the APK differs
+from F-Droid's build and F-Droid will not publish it.
 
 ### Slow-queue alternative
 If you'd rather not deal with GitLab, file a ticket at:
