@@ -219,11 +219,20 @@ class MainActivity : AppCompatActivity() {
             // The field is locked while running. Show the port the service was started with,
             // not an edit made while this screen still showed it as stopped.
             editHttpPort.setText(HttpServerSettings.load(this).toString())
-            updateUi(status.serverRunning, status.adbConnected, status.url, status.starting)
+            updateUi(
+                status.serverRunning, status.adbConnected, status.url, status.starting,
+                adbNotAuthorized = status.adbNotAuthorized,
+            )
         }
     }
 
-    private fun updateUi(running: Boolean, adbOk: Boolean, url: String?, starting: Boolean = false) {
+    private fun updateUi(
+        running: Boolean,
+        adbOk: Boolean,
+        url: String?,
+        starting: Boolean = false,
+        adbNotAuthorized: Boolean = false,
+    ) {
         if (running) {
             // While starting, the URL shows up as soon as HTTP is listening; ADB can take longer.
             tvStatus.text = getString(
@@ -250,12 +259,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         tvAdbStatus.text = when {
-            adbOk    -> "ADB: connected (loopback 127.0.0.1:5555)"
-            starting -> "ADB: connecting — accept \"Allow USB debugging?\" if asked"
-            running  -> "ADB: not connected — open Developer Options → Enable USB Debugging"
-            else     -> "ADB: not connected — start the server first"
+            adbOk            -> "ADB: connected (loopback 127.0.0.1:5555)"
+            starting         -> "ADB: connecting — accept \"Allow USB debugging?\" if asked"
+            // adbd asks once per connection, so only a new start brings the prompt back.
+            // One line, like the others: two would push the screen past 540dp on a 1080p TV.
+            adbNotAuthorized -> "ADB: \"Allow USB debugging?\" not accepted — press Stop, then Start"
+            running          -> "ADB: not connected — open Developer Options → Enable USB Debugging"
+            else             -> "ADB: not connected — start the server first"
         }
-        val adbColor = if (adbOk) "#34C759" else "#6B7280"
+        val adbColor = when {
+            adbOk            -> "#34C759"
+            adbNotAuthorized -> "#FBBF24"
+            else             -> "#6B7280"
+        }
         tvAdbStatus.setTextColor(Color.parseColor(adbColor))
         adbDot.setBackgroundResource(R.drawable.shape_status_dot)
         adbDot.background.setTint(Color.parseColor(adbColor))

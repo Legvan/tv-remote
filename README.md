@@ -149,6 +149,11 @@ All ADB communication is **direct TCP** (no system `adb` daemon needed — pure 
 - **No "Allow USB debugging?" prompt appears.** The prompt only appears once debugging is
   switched on in Developer options; until then the TV has nothing to ask about. Turn on
   Network debugging / ADB over network, then press **Stop Server** and **Start Server** again.
+- **"Allow USB debugging?" was not accepted.** The prompt was closed with Back or Cancel, or not
+  answered within a minute. The TV asks only once per connection, so press **Stop Server** and
+  **Start Server** to see it again, then accept it and tick **Always allow**. If no prompt comes
+  up, the earlier one is still open behind another screen: leave TV Remote with Back to find it,
+  or restart the TV. (v1.7 and earlier show "ADB: connecting" until Stop Server instead.)
 - **No on-screen keyboard appears for the port field.** If voice input is enabled in the TV's
   keyboard settings, it can hide the on-screen keyboard completely. Turn voice input off there,
   or use the **−** / **+** buttons next to the port field (added after v1.6).
