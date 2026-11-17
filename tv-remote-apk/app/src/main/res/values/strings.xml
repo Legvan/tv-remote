@@ -11,7 +11,8 @@
     <string name="btn_stop">Stop Server</string>
     <string name="adb_connected">ADB connected</string>
     <string name="adb_disconnected">ADB not connected</string>
-    <string name="adb_hint">Enable Developer Options → USB Debugging on first run</string>
+    <!-- The prompt only appears once debugging is on (#7), so the order matters. Same steps as the README. -->
+    <string name="adb_hint">First time: turn on Network debugging / ADB over network in Developer options, then press Start Server and accept \"Allow USB debugging?\" — tick \"Always allow\".</string>
     <string name="http_port_label">HTTP web remote port</string>
     <string name="http_port_invalid">Enter a port from 1 to 65535</string>
     <string name="http_port_step_down" translatable="false">−</string>

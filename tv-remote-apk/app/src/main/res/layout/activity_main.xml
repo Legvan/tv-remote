@@ -323,7 +323,7 @@
                     android:id="@+id/tvHint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="On first run: approve the \'Allow USB Debugging\' prompt that appears on screen"
+                    android:text="@string/adb_hint"
                     android:textColor="#374151"
                     android:textSize="13sp"
                     android:gravity="center" />
