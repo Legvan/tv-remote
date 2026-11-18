@@ -42,6 +42,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnPortDown: Button
     private lateinit var btnPortUp: Button
 
+    /** Start Server was pressed; the battery-optimization screen waits for ADB to connect. */
+    private var batteryOfferPending = false
+
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != RemoteService.ACTION_STATUS_UPDATE) return
@@ -168,7 +171,7 @@ class MainActivity : AppCompatActivity() {
         }
         HttpServerSettings.save(this, port)
         ContextCompat.startForegroundService(this, Intent(this, RemoteService::class.java))
-        offerBatteryOptimizationExemption()
+        batteryOfferPending = true
         updateUi(running = true, adbOk = false, url = null, starting = true)
         btnStart.isEnabled = false
         btnStop.isEnabled  = true
@@ -177,6 +180,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopServer() {
         stopService(Intent(this, RemoteService::class.java))
+        batteryOfferPending = false
         updateUi(running = false, adbOk = false, url = null)
         btnStart.isEnabled = true
         btnStop.isEnabled  = false
@@ -190,6 +194,11 @@ class MainActivity : AppCompatActivity() {
      * The direct "allow?" dialog (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) would be
      * one tap shorter, but it needs REQUEST_IGNORE_BATTERY_OPTIMIZATIONS — a permission
      * Google Play restricts to a short list of app categories a TV remote is not on.
+     *
+     * Offered once ADB has connected after Start Server, not on the press itself. Opened at the
+     * same time as "Allow USB debugging?", Settings came up over the prompt and hid it, and adbd
+     * puts up no new prompt while one is open, so Stop and Start could not bring it back. While
+     * ADB is not working yet, the screen's own hint is what the user needs to see anyway.
      *
      * Shown once. Nagging on every Start Server press would be worse than the problem.
      */
@@ -223,6 +232,10 @@ class MainActivity : AppCompatActivity() {
                 status.serverRunning, status.adbConnected, status.url, status.starting,
                 adbNotAuthorized = status.adbNotAuthorized,
             )
+            if (batteryOfferPending && status.adbConnected) {
+                batteryOfferPending = false
+                offerBatteryOptimizationExemption()
+            }
         }
     }
 

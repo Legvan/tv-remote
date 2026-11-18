@@ -175,11 +175,12 @@ To start the server remotely from the CLI (e.g. if the app was killed):
    and leave it enabled. On Nvidia Shield, the separate USB debugging option is not
    required.
 2. Open **TV Remote** and press **Start Server** once. This starts both the web remote
-   and the UDP compatibility listener. The app opens the battery-optimization screen the
-   first time — exempt **TV Remote** there, or the Shield stops the listener in standby.
+   and the UDP compatibility listener.
 3. Accept the one-time authorization dialog. Android may label it **Allow USB
    debugging?** even though the connection is through Network debugging; select
-   **Always allow** when available.
+   **Always allow** when available. Once it is accepted, the app opens the
+   battery-optimization screen the first time — exempt **TV Remote** there, or the Shield
+   stops the listener in standby.
 4. Configure either remote:
    - In Yatse's host settings, use the TV's IP address, enable its Wake-on-LAN/Remote
      Starter option, and set the UDP port to `5600`.
