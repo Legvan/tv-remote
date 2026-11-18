@@ -149,6 +149,11 @@ All ADB communication is **direct TCP** (no system `adb` daemon needed — pure 
 - **No "Allow USB debugging?" prompt appears.** The prompt only appears once debugging is
   switched on in Developer options; until then the TV has nothing to ask about. Turn on
   Network debugging / ADB over network, then press **Stop Server** and **Start Server** again.
+- **"Allow USB debugging?" was not accepted.** The prompt was closed with Back or Cancel, or not
+  answered within a minute. The TV asks only once per connection, so press **Stop Server** and
+  **Start Server** to see it again, then accept it and tick **Always allow**. If no prompt comes
+  up, the earlier one is still open behind another screen: leave TV Remote with Back to find it,
+  or restart the TV. (v1.7 and earlier show "ADB: connecting" until Stop Server instead.)
 - **No on-screen keyboard appears for the port field.** If voice input is enabled in the TV's
   keyboard settings, it can hide the on-screen keyboard completely. Turn voice input off there,
   or use the **−** / **+** buttons next to the port field (added after v1.6).
@@ -170,11 +175,12 @@ To start the server remotely from the CLI (e.g. if the app was killed):
    and leave it enabled. On Nvidia Shield, the separate USB debugging option is not
    required.
 2. Open **TV Remote** and press **Start Server** once. This starts both the web remote
-   and the UDP compatibility listener. The app opens the battery-optimization screen the
-   first time — exempt **TV Remote** there, or the Shield stops the listener in standby.
+   and the UDP compatibility listener.
 3. Accept the one-time authorization dialog. Android may label it **Allow USB
    debugging?** even though the connection is through Network debugging; select
-   **Always allow** when available.
+   **Always allow** when available. Once it is accepted, the app opens the
+   battery-optimization screen the first time — exempt **TV Remote** there, or the Shield
+   stops the listener in standby.
 4. Configure either remote:
    - In Yatse's host settings, use the TV's IP address, enable its Wake-on-LAN/Remote
      Starter option, and set the UDP port to `5600`.

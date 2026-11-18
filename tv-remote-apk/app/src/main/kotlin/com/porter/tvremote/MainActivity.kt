@@ -42,6 +42,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnPortDown: Button
     private lateinit var btnPortUp: Button
 
+    /** Start Server was pressed; the battery-optimization screen waits for ADB to connect. */
+    private var batteryOfferPending = false
+
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != RemoteService.ACTION_STATUS_UPDATE) return
@@ -168,7 +171,7 @@ class MainActivity : AppCompatActivity() {
         }
         HttpServerSettings.save(this, port)
         ContextCompat.startForegroundService(this, Intent(this, RemoteService::class.java))
-        offerBatteryOptimizationExemption()
+        batteryOfferPending = true
         updateUi(running = true, adbOk = false, url = null, starting = true)
         btnStart.isEnabled = false
         btnStop.isEnabled  = true
@@ -177,6 +180,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopServer() {
         stopService(Intent(this, RemoteService::class.java))
+        batteryOfferPending = false
         updateUi(running = false, adbOk = false, url = null)
         btnStart.isEnabled = true
         btnStop.isEnabled  = false
@@ -190,6 +194,11 @@ class MainActivity : AppCompatActivity() {
      * The direct "allow?" dialog (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) would be
      * one tap shorter, but it needs REQUEST_IGNORE_BATTERY_OPTIMIZATIONS — a permission
      * Google Play restricts to a short list of app categories a TV remote is not on.
+     *
+     * Offered once ADB has connected after Start Server, not on the press itself. Opened at the
+     * same time as "Allow USB debugging?", Settings came up over the prompt and hid it, and adbd
+     * puts up no new prompt while one is open, so Stop and Start could not bring it back. While
+     * ADB is not working yet, the screen's own hint is what the user needs to see anyway.
      *
      * Shown once. Nagging on every Start Server press would be worse than the problem.
      */
@@ -219,11 +228,24 @@ class MainActivity : AppCompatActivity() {
             // The field is locked while running. Show the port the service was started with,
             // not an edit made while this screen still showed it as stopped.
             editHttpPort.setText(HttpServerSettings.load(this).toString())
-            updateUi(status.serverRunning, status.adbConnected, status.url, status.starting)
+            updateUi(
+                status.serverRunning, status.adbConnected, status.url, status.starting,
+                adbNotAuthorized = status.adbNotAuthorized,
+            )
+            if (batteryOfferPending && status.adbConnected) {
+                batteryOfferPending = false
+                offerBatteryOptimizationExemption()
+            }
         }
     }
 
-    private fun updateUi(running: Boolean, adbOk: Boolean, url: String?, starting: Boolean = false) {
+    private fun updateUi(
+        running: Boolean,
+        adbOk: Boolean,
+        url: String?,
+        starting: Boolean = false,
+        adbNotAuthorized: Boolean = false,
+    ) {
         if (running) {
             // While starting, the URL shows up as soon as HTTP is listening; ADB can take longer.
             tvStatus.text = getString(
@@ -250,12 +272,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         tvAdbStatus.text = when {
-            adbOk    -> "ADB: connected (loopback 127.0.0.1:5555)"
-            starting -> "ADB: connecting — accept \"Allow USB debugging?\" if asked"
-            running  -> "ADB: not connected — open Developer Options → Enable USB Debugging"
-            else     -> "ADB: not connected — start the server first"
+            adbOk            -> "ADB: connected (loopback 127.0.0.1:5555)"
+            starting         -> "ADB: connecting — accept \"Allow USB debugging?\" if asked"
+            // adbd asks once per connection, so only a new start brings the prompt back.
+            // One line, like the others: two would push the screen past 540dp on a 1080p TV.
+            adbNotAuthorized -> "ADB: \"Allow USB debugging?\" not accepted — press Stop, then Start"
+            running          -> "ADB: not connected — open Developer Options → Enable USB Debugging"
+            else             -> "ADB: not connected — start the server first"
         }
-        val adbColor = if (adbOk) "#34C759" else "#6B7280"
+        val adbColor = when {
+            adbOk            -> "#34C759"
+            adbNotAuthorized -> "#FBBF24"
+            else             -> "#6B7280"
+        }
         tvAdbStatus.setTextColor(Color.parseColor(adbColor))
         adbDot.setBackgroundResource(R.drawable.shape_status_dot)
         adbDot.background.setTint(Color.parseColor(adbColor))

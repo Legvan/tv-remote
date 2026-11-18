@@ -54,6 +54,8 @@ class RemoteService : Service() {
             val url: String?,
             /** True until the first ADB connect attempt has finished. */
             val starting: Boolean = false,
+            /** That attempt ran out of time on "Allow USB debugging?" (dismissed or not answered). */
+            val adbNotAuthorized: Boolean = false,
         )
         @Volatile var currentStatus: StatusSnapshot? = null
             private set
@@ -153,8 +155,10 @@ class RemoteService : Service() {
 
             // 2. Connect to ADB loopback even when HTTP is unavailable. The UDP
             // listener is independent and still needs the fixed wake/Kodi action.
-            val adbOk = adb.connect()
-            Log.i(TAG, "ADB loopback connected: $adbOk")
+            // Gives up after AdbController.AUTH_TIMEOUT_MS if the prompt is not accepted.
+            val adbResult = adb.connect()
+            val adbOk = adbResult == AdbController.ConnectResult.CONNECTED
+            Log.i(TAG, "ADB loopback: $adbResult")
 
             // 3. Get LAN IP for notification / broadcast
             val ip = getLanIp()
@@ -171,7 +175,12 @@ class RemoteService : Service() {
             publishOnMain(
                 notificationText,
                 adbOk,
-                StatusSnapshot(serverRunning = true, adbConnected = adbOk, url = url),
+                StatusSnapshot(
+                    serverRunning = true,
+                    adbConnected = adbOk,
+                    url = url,
+                    adbNotAuthorized = adbResult == AdbController.ConnectResult.NOT_AUTHORIZED,
+                ),
             )
         }
     }

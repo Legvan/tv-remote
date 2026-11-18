@@ -13,7 +13,6 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
-import java.net.SocketException
 import java.net.StandardProtocolFamily
 import java.nio.channels.DatagramChannel
 import java.util.concurrent.atomic.AtomicBoolean
@@ -156,16 +155,18 @@ class YatseStarter(
                     Log.w(TAG, "Could not handle UDP packet", e)
                 }
             }
-        } catch (e: SocketException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // stop() cancels this job and then closes the socket, which is the only way out of
+            // the blocking receive(). That close surfaces as AsynchronousCloseException (seen on
+            // every Stop), ClosedChannelException or SocketException, depending on timing, and
+            // is not a failure. Anything thrown while the job is still active is.
             if (currentCoroutineContext().isActive) {
                 Log.e(TAG, "Yatse UDP listener failed", e)
             } else {
                 Log.i(TAG, "Yatse UDP listener stopped")
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.e(TAG, "Yatse UDP listener failed", e)
         } finally {
             synchronized(lifecycleLock) {
                 if (socket === openedSocket) socket = null
